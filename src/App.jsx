@@ -3,101 +3,9 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-
-Requisitos:
-- Proyecto Vite + React
-- Tailwind CSS (opcional pero recomendado)
-- lucide-react para íconos (opcional)
+- MEJORA ESTÉTICA: Fondo unificado (degradado) y eliminación de contenedores de fondo secundarios.
+- Se mantiene el bloque de Horario **HOY** con formato ON/OFF y fecha/hora completa.
 */
-
-/**
-Polished App.jsx — Fotoperiodo App
-- Código revisado y limpiado para evitar errores en ejecución.
-- Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
-- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-
-Requisitos:
-- Proyecto Vite + React
-- Tailwind CSS (opcional pero recomendado)
-- lucide-react para íconos (opcional)
-*/
-
-/**
- * Fotoperiodo App (React) - Versión de Máxima Robustez
- * - Se han evitado todos los comentarios de JS/JSX dentro de bloques de mapeo.
- * - Se usan comillas simples/dobles para clases estáticas para evitar problemas con Template Literals.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final limpio, funcional y con correcciones de errores de sintaxis y lógica (toFixed).
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con correcciones de lógica, UI/UX mejorado para modo oscuro y responsividad (móvil/escritorio).
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control (Versión de Máxima Robustez)
- * - Restaura el cálculo de 'lightScheduleToday' a una versión matemática robusta.
- * - Mantiene el Balance Energético (vs 12L/12D) y el calendario funcional.
- */
-
-/**
- * Fotoperiodo App — Módulo de Control
- * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
- */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
@@ -124,7 +32,9 @@ function fmtDateTimeLocal(d) {
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
+    // Current time is Friday, October 17, 2025 at 7:21:26 PM -03.
+    const d = new Date(2025, 9, 17); // 17 de Octubre de 2025
+    d.setHours(0,0,0,0);
     return fmtDateTimeLocal(d);
   });
 
@@ -298,7 +208,7 @@ export default function App() {
           (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
     }
 
-    // ** MODIFICACIÓN: Formatear a fecha/hora completa **
+    // ** MODIFICACIÓN CLAVE: Formatear a fecha/hora completa **
     const formatDateTime = (h) => {
       if (h === null) return 'N/A';
       const totalMinutes = Math.round(h * 60);
@@ -318,7 +228,7 @@ export default function App() {
         minute: '2-digit' 
       });
     };
-    // ** FIN MODIFICACIÓN **
+    // ** FIN MODIFICACIÓN CLAVE **
 
 
     let lightEndHourToday = null;
@@ -423,8 +333,10 @@ export default function App() {
   const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Gasto Extra de' : 'Balance Neutral de';
 
   return (
+    // CONTENEDOR PRINCIPAL CON EL DEGRADADO UNIFICADO
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-white">
-      <div className="w-full max-w-5xl bg-slate-900/70 rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border border-slate-700 backdrop-blur-sm">
+      {/* CONTENEDOR PRINCIPAL DE LA APP, NO TIENE BG PARA HEREDAR EL DEGRADADO */}
+      <div className="w-full max-w-5xl rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border border-slate-700 backdrop-blur-sm bg-slate-900/50">
 
         <header className="text-center mb-6">
           <div className="flex justify-center gap-4 mb-3">
@@ -437,33 +349,33 @@ export default function App() {
 
         <main className="grid lg:grid-cols-3 gap-6">
 
-          {/* Configuration */}
-          <section className="lg:col-span-2 bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg">
+          {/* Configuration - Se eliminó bg-slate-800 */}
+          <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
             <h2 className="text-lg font-semibold mb-4 text-white">Configuración</h2>
 
             <div className="grid gap-4">
               <label className="text-sm text-gray-100">Fecha y hora de inicio</label>
               <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
 
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm text-gray-100">Horas luz (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursLight}
                     onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
                 </div>
                 <div>
                   <label className="text-sm text-gray-100">Horas oscuridad (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursDark}
                     onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
                 </div>
                 <div>
                   <label className="text-sm text-gray-100">Duración (días)</label>
                   <input type="number" min="1" max="9999" value={durationDays}
                     onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
                 </div>
               </div>
 
@@ -484,8 +396,8 @@ export default function App() {
             </div>
           </section>
 
-          {/* Status */}
-          <aside className="bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg">
+          {/* Status - Se eliminó bg-slate-900 */}
+          <aside className="p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
             <h3 className="text-lg font-semibold mb-4 text-white">Estado</h3>
 
             <div className="space-y-4 text-sm text-gray-200">
@@ -540,18 +452,18 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
-              {/* ** BLOQUE SOLICITADO (ON/OFF con fecha y hora) ** */}
+              {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
               <div>
-                <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-1 gap-3 text-white mt-2">
-                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-yellow-900/10 shadow-inner">
+                <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
+                <div className="text-sm grid grid-cols-1 gap-3 text-white">
+                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
                     <span className="text-yellow-400 font-semibold block mb-1 text-base">ON (Inicio Luz):</span> 
                     <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
                     
                     <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">OFF (Fin Luz):</span> 
                     <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
                   </div>
-                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-indigo-900/10 shadow-inner">
+                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
                     <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
                     <div className="font-mono text-lg">{lightScheduleToday.darkStart}</div>
                     
@@ -561,13 +473,25 @@ export default function App() {
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
-              {/* ** FIN BLOQUE SOLICITADO ** */}
+              {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
+              
+              {/* BLOQUE ELIMINADO:
+              <div>
+                <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
+                <div className="text-sm grid grid-cols-2 gap-1 text-white">
+                  <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
+                  <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
+                </div>
+                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
+              </div>
+              */}
+
             </div>
           </aside>
 
-          {/* Calendar full width below */}
-          <section className="lg:col-span-3 mt-4 bg-slate-900 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          {/* Calendar full width below - Se eliminó bg-slate-900 */}
+          <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
               <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
               <div className="text-sm text-gray-400">{durationDays} días</div>
             </div>
