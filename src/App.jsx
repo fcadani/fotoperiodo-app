@@ -1,9 +1,9 @@
 /**
-Polished App.jsx — Fotoperiodo App (Versión Final Corregida)
-- Código prolijo, eficiente y libre de 'ReferenceError: darkHours'.
-- Sincronización L/D perfecta: La Fecha y hora de inicio SIEMPRE marca el COMIENZO de la fase de OSCURIDAD (D).
-- El calendario muestra las FECHAS REALES (DD/MM) en la primera columna.
-- El resaltado del calendario (cuadro rojo) se sincroniza con la fecha y hora de la PC.
+Polished App.jsx — Fotoperiodo App (Bloque "Horario HOY" eliminado)
+- Se eliminó el bloque de JSX y la lógica de 'lightScheduleToday' de los useMemo.
+- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
+- La lógica de ciclo se mantiene: la Fecha y hora de inicio SIEMPRE marca el COMIENZO de la fase de LUZ (L) por defecto.
+- El calendario muestra los números de día (Día 1, Día 2, etc.) según el archivo proporcionado.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,7 +31,6 @@ function fmtDateTimeLocal(d) {
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
-    // Inicializa con la fecha actual a la medianoche si no hay datos
     const d = new Date(); d.setHours(0,0,0,0);
     return fmtDateTimeLocal(d);
   });
@@ -95,6 +94,10 @@ export default function App() {
     return sum > 0 ? sum : 0.0000001; // avoid zero division
   }, [hoursLight, hoursDark]);
 
+  const fractionalStartOffset = useMemo(() => {
+    // Usado para compensar el inicio del ciclo en el calendario
+    return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
+  }, [startDateObj]);
 
   const hoursSinceStartNow = useMemo(() => {
     return (now.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
@@ -104,11 +107,10 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
-  // *** CORRECCIÓN CLAVE 1: La luz (L) solo es activa si el tiempo en ciclo es mayor o igual a 'hoursDark'.
-  // Esto hace que la fase de Oscuridad (D) comience exactamente en la 'startDate'.
+  // Lógica actual (basada en el archivo original): LUZ comienza en la hora de inicio.
   const isNowLight = useMemo(() => {
-    return currentInCycle >= Number(hoursDark);
-  }, [currentInCycle, hoursDark]);
+    return currentInCycle < Number(hoursLight);
+  }, [currentInCycle, hoursLight]);
 
   // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
@@ -127,10 +129,10 @@ export default function App() {
   }, [now, startDateObj]);
 
 
-  // *** FUNCIÓN DE CICLO: La luz (L) solo es activa si el tiempo en ciclo es mayor o igual a 'hoursDark'.
+  // Ciclo: LUZ comienza en la hora 0 (del ciclo), dura hoursLight.
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
-    return inCycle >= Number(hoursDark);
+    return inCycle < Number(hoursLight);
   }
   
   // ---- Balance Energético (vs 12L/12D) ----
@@ -140,9 +142,13 @@ export default function App() {
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
 
+    // Horas de luz consumidas por el ciclo personalizado hasta ahora
     const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
+
+    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
 
+    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
@@ -172,114 +178,35 @@ export default function App() {
   // ---- FIN FORMATO DE TIEMPO TRANSCURRIDO ----
   
   // ---- Build calendar data (array of days x 24) ----
-  // *** CORRECCIÓN CLAVE 2: Lógica de calendario sincronizada con la hora de inicio (D comienza en la hora de inicio).
   const calendar = useMemo(() => {
     const rows = [];
     const days = clamp(Number(durationDays) || 0, 1, 9999); 
-    
-    // Obtener la fecha de inicio del ciclo (a la medianoche) para calcular el desfase
-    const midnightStartDate = new Date(startDateObj);
-    midnightStartDate.setHours(0, 0, 0, 0);
-
-    // Calcular el desfase total en horas desde la medianoche del día de inicio
-    const initialHoursOffset = (startDateObj.getTime() - midnightStartDate.getTime()) / (1000 * 60 * 60);
-
     for (let d = 0; d < days; d++) {
       const row = [];
       for (let h = 0; h < 24; h++) {
-        // Horas transcurridas desde la medianoche del Día 1. 
-        // Se le RESTA el offset, haciendo que el inicio real (hora 'h' = initialHoursOffset) sea la hora 0 del ciclo.
-        const hoursSinceStart = d * 24 + h - initialHoursOffset;
-        
+        // La compensación fractionalStartOffset es necesaria para que el L/D caiga en la hora correcta del día.
+        const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
       }
       rows.push(row);
     }
     return rows;
-  }, [durationDays, startDateObj, cycleLength, hoursDark]);
-
-  // ---- Determine today's precise schedule (encendido/apagado) ----
-  const lightScheduleToday = useMemo(() => {
-    const lightHours = Number(hoursLight);
-    const darkHours = Number(hoursDark);
-    const cycleLen = cycleLength;
-
-    if (lightHours === 0) return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: false };
-    if (darkHours === 0) return { status: 'Luz continua', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: true };
-
-    // 1. Calcular las horas absolutas al inicio del ciclo actual (horas desde el startDateObj)
-    const currentCycleStartAbsoluteHours = hoursSinceStartNow - currentInCycle; 
-
-    // 2. Determinar el inicio absoluto de la fase LUZ más reciente/actual
-    let lightStartAbsolute;
-    
-    if (isNowLight) {
-      // Si estamos en LUZ, la luz empezó hace 'currentInCycle - hoursDark' horas.
-      lightStartAbsolute = currentCycleStartAbsoluteHours + darkHours;
-    } else {
-      // Si estamos en OSCURIDAD, la luz terminó hace 'currentInCycle - hoursDark' horas.
-      // La próxima luz empieza al final de este ciclo (currentCycleStartAbsoluteHours + cycleLen) y dura 'hoursLight'.
-      // El inicio de la luz más reciente (que ya terminó) fue en el ciclo anterior.
-      lightStartAbsolute = currentCycleStartAbsoluteHours - cycleLen + darkHours;
-    }
-
-    // El fin de luz es siempre la hora de inicio de luz + la duración de luz.
-    let lightEndAbsolute = lightStartAbsolute + lightHours;
-
-    // Ajustamos para asegurarnos de que el evento de LUZ mostrado sea el relevante para el día de hoy (que no haya terminado hace mucho).
-    while (lightEndAbsolute < hoursSinceStartNow) {
-        lightStartAbsolute += cycleLen;
-        lightEndAbsolute += cycleLen;
-    }
-    
-    // Si estamos en oscuridad y el inicio de luz calculado está en el futuro, retrocedemos 
-    // un ciclo para mostrar la fase de oscuridad actual (OFF es fin de luz anterior).
-    if (!isNowLight && lightStartAbsolute > hoursSinceStartNow) {
-         lightStartAbsolute -= cycleLen;
-         lightEndAbsolute -= cycleLen;
-    }
-
-    // Función para formatear la fecha y hora absoluta (con mes, día, hora, min)
-    const formatDateTime = (hAbsolute) => {
-      const d = new Date(startDateObj.getTime() + hAbsolute * 3600000); // 3600000ms en una hora
-
-      return d.toLocaleDateString([], { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    };
-    
-    return {
-      status: null,
-      lightStart: formatDateTime(lightStartAbsolute),
-      lightEnd: formatDateTime(lightEndAbsolute), 
-      isLightActive: isNowLight 
-    };
-  }, [hoursLight, hoursDark, cycleLength, hoursSinceStartNow, currentInCycle, isNowLight, startDateObj]);
+  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
 
 
   // ---- next change event ----
+  // La lógica para el próximo evento se mantiene ya que no dependía del bloque "Horario HOY".
   const nextChangeEvent = useMemo(() => {
     let hoursToNext;
     let nextState;
-    
     if (isNowLight) {
-        // Estamos en LUZ (D a L). La transición es a OSCURIDAD (L a D). Ocurre en la hora 'hoursLight' del ciclo de luz.
-        hoursToNext = Number(hoursLight) - (currentInCycle - Number(hoursDark));
-        nextState = 'Oscuridad';
+      hoursToNext = Number(hoursLight) - currentInCycle;
+      nextState = 'Oscuridad';
     } else {
-        // Estamos en OSCURIDAD (L a D). La transición es a LUZ (D a L). Ocurre en la hora 'hoursDark' del ciclo de oscuridad.
-        hoursToNext = Number(hoursDark) - currentInCycle;
-        nextState = 'Luz';
+      hoursToNext = cycleLength - currentInCycle;
+      nextState = 'Luz';
     }
-
-    if (!Number.isFinite(hoursToNext) || hoursToNext < 0) {
-        // Fallback robusto para asegurar que hoursToNext siempre sea positivo y correcto en el ciclo.
-        hoursToNext = ((hoursToNext % cycleLength) + cycleLength) % cycleLength;
-    }
-
+    if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
     return {
       hoursToNext: hoursToNext,
@@ -289,19 +216,6 @@ export default function App() {
       action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
-
-  // ---- Helper para obtener la fecha de un día del calendario (CORRECCIÓN CLAVE 3) ----
-  const getCalendarDate = useCallback((dayIndex) => {
-    const d = new Date(startDateObj);
-    // Movemos la fecha de inicio a la medianoche para contar días completos correctamente
-    d.setHours(0, 0, 0, 0);
-    // Sumamos los días del índice (dayIndex)
-    d.setDate(d.getDate() + dayIndex);
-    
-    // Formato: 17/10
-    return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
-  }, [startDateObj]);
-  // ---------------------------------------------------------------------------------
 
   // ---- export / import / reset ----
   const handleExport = useCallback(() => {
@@ -471,23 +385,7 @@ export default function App() {
               </div>
 
               {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
-              <div>
-                <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-1 gap-3 text-white">
-                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-yellow-400 font-semibold block mb-1 text-base">
-                      {lightScheduleToday.isLightActive ? 'ON (Inicio Luz Actual):' : 'ON (Próx. Encendido):'}
-                    </span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
-                    
-                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">
-                      {lightScheduleToday.isLightActive ? 'OFF (Próx. Apagado):' : 'OFF (Fin Luz Anterior):'}
-                    </span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
-                  </div>
-                </div>
-                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
-              </div>
+              {/* ESTE BLOQUE FUE ELIMINADO COMPLETAMENTE. */}
               {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
 
             </div>
@@ -496,8 +394,7 @@ export default function App() {
           {/* Calendar full width below */}
           <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
-              {/* *** CORRECCIÓN CLAVE 3: Título actualizado *** */}
-              <h4 className="font-semibold text-white text-lg">Calendario (Fecha × Hora)</h4>
+              <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
               <div className="text-sm text-gray-400">{durationDays} días</div>
             </div>
 
@@ -505,8 +402,7 @@ export default function App() {
               <table className="min-w-full text-xs text-gray-200">
                 <thead className="bg-slate-800 sticky top-0 shadow-md">
                   <tr>
-                    {/* *** CORRECCIÓN CLAVE 3: Columna de fecha *** */}
-                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Fecha</th>
+                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Día</th>
                     {Array.from({length:24}).map((_,h) => (
                       <th key={h} className="p-2 text-center text-sm text-gray-300 w-8">{h}h</th>
                     ))}
@@ -515,12 +411,8 @@ export default function App() {
                 <tbody>
                   {calendar.map((row, d) => (
                     <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      {/* *** CORRECCIÓN CLAVE 3: Se usa getCalendarDate(d) para la fecha real *** */}
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
-                          {getCalendarDate(d)}
-                      </td>
+                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
                       {row.map((isLight, h) => {
-                        // El resaltado de la celda es correcto
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
