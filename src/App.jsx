@@ -83,6 +83,12 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control (Versión de Máxima Robustez)
+ * - Restaura el cálculo de 'lightScheduleToday' a una versión matemática robusta.
+ * - Mantiene el Balance Energético (vs 12L/12D) y el calendario funcional.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -238,15 +244,10 @@ export default function App() {
     return rows;
   }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
 
-  // ---- Determine today's precise schedule (encendido/apagado) ----
+  // ---- Determine today's precise schedule (basado en el ciclo actual) ----
   const lightScheduleToday = useMemo(() => {
-    const dayIndex = currentDayIndex24h; 
-    const dayStartAbsoluteHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
     const lightHours = Number(hoursLight);
     const darkHours = Number(hoursDark);
-
-    let lightStartHourToday = null;
-    let darkStartHourToday = null;
 
     if (lightHours === 0) {
       return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
@@ -255,76 +256,55 @@ export default function App() {
       return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
-    const precision = 1 / 60; // 1 minuto
+    // 1. Determinar el inicio del ciclo actual
+    const cycleIndex = Math.floor(hoursSinceStartNow / cycleLength);
+    const cycleStartAbsoluteHours = cycleIndex * cycleLength + fractionalStartOffset; // Incluir el offset de inicio original
     
-    const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart);
+    // 2. Determinar la hora de encendido (Luz) y apagado (Oscuridad) ABSOLUTA
+    let lightStartAbsoluteHours = -1;
+    let darkStartAbsoluteHours = -1;
     
-    if (isLightAtDayStart) {
-        lightStartHourToday = 0;
+    // Usar la función isLightAtAbsoluteHours para determinar la fase al inicio del ciclo (basado en cycleStartAbsoluteHours)
+    // Se usa un pequeño delta (+0.01) para evitar caer justo en la transición del ciclo que es el límite
+    if (isLightAtAbsoluteHours(cycleStartAbsoluteHours + 0.01)) { 
+        lightStartAbsoluteHours = cycleStartAbsoluteHours;
+        darkStartAbsoluteHours = cycleStartAbsoluteHours + lightHours;
     } else {
-        darkStartHourToday = 0;
+        darkStartAbsoluteHours = cycleStartAbsoluteHours;
+        lightStartAbsoluteHours = cycleStartAbsoluteHours + darkHours;
     }
 
-    // Buscar la primera transición
-    for (let h = 0; h < 24; h += precision) {
-      const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
-      const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
-      const wasLightBefore = isLightAtAbsoluteHours(currentAbsoluteHour - precision);
-
-      if (isLight && !wasLightBefore && lightStartHourToday === null) {
-        lightStartHourToday = h;
-      } 
-      if (!isLight && wasLightBefore && darkStartHourToday === null) {
-        darkStartHourToday = h;
-      }
-
-      if (lightStartHourToday !== null && darkStartHourToday !== null && 
-          (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
-    }
-
-    const formatTime = (h) => {
-      if (h === null) return 'N/A';
-      const totalMinutes = Math.round(h * 60);
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      
-      const d = new Date(startDateObj.getTime());
-      d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (dayIndex * 24 + hours) * 3600000 + minutes * 60000);
-      
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // 3. Formatear la hora absoluta a la hora local de 24h (HH:mm)
+    const formatAbsoluteHourToLocalTime = (absoluteHoursSinceStart) => {
+        if (absoluteHoursSinceStart < 0) return 'N/A';
+        
+        // Calcular el tiempo transcurrido en milisegundos
+        const elapsedMs = absoluteHoursSinceStart * 3600000;
+        
+        // Crear una nueva fecha sumando el tiempo transcurrido a la fecha de inicio
+        const date = new Date(startDateObj.getTime() + elapsedMs);
+        
+        // Formato HH:mm
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    let lightEndHourToday = null;
-    let darkEndHourToday = null;
-
-    // Calcular hora de fin
-    if (lightStartHourToday !== null) {
-      let tempLightEnd = lightStartHourToday + lightHours;
-      if (darkStartHourToday !== null && darkStartHourToday !== 0 && lightStartHourToday < darkStartHourToday) {
-          tempLightEnd = darkStartHourToday;
-      }
-      if (tempLightEnd > 24) tempLightEnd = 24; 
-      lightEndHourToday = tempLightEnd;
-    }
+    const lightStartLocal = formatAbsoluteHourToLocalTime(lightStartAbsoluteHours);
+    const lightEndLocal = formatAbsoluteHourToLocalTime(lightStartAbsoluteHours + lightHours);
     
-    if (darkStartHourToday !== null) {
-      let tempDarkEnd = darkStartHourToday + darkHours;
-      if (lightStartHourToday !== null && lightStartHourToday !== 0 && darkStartHourToday < lightStartHourToday) {
-          tempDarkEnd = lightStartHourToday;
-      }
-      if (tempDarkEnd > 24) tempDarkEnd = 24; 
-      darkEndHourToday = tempDarkEnd;
-    }
+    const darkStartLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours);
+    const darkEndLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours + darkHours);
 
+    // Los horarios se calculan para el ciclo completo, si un evento cae fuera del día actual (de 00:00 a 24:00),
+    // la hora formateada mostrará la hora local del día anterior o siguiente, lo cual es correcto.
+    
     return {
-      status: null,
-      lightStart: formatTime(lightStartHourToday),
-      lightEnd: formatTime(lightEndHourToday),
-      darkStart: formatTime(darkStartHourToday),
-      darkEnd: formatTime(darkEndHourToday),
+      status: `Horario del ciclo actual (${cycleLength.toFixed(1)}h)`,
+      lightStart: lightStartLocal,
+      lightEnd: lightEndLocal,
+      darkStart: darkStartLocal,
+      darkEnd: darkEndLocal,
     };
-  }, [currentDayIndex24h, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
+  }, [hoursSinceStartNow, hoursLight, hoursDark, cycleLength, startDateObj]);
 
 
   // ---- next change event ----
@@ -338,7 +318,9 @@ export default function App() {
       hoursToNext = cycleLength - currentInCycle;
       nextState = 'Luz';
     }
+    // Añadida comprobación para evitar TypeError: Cannot read properties of undefined (reading 'toFixed')
     if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
+    
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
     return {
       hoursToNext: hoursToNext,
@@ -353,7 +335,7 @@ export default function App() {
   const handleExport = useCallback(() => {
     const payload = { startDate, hoursLight, hoursDark, durationDays };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const url = URL.ObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'fotoperiodo-config.json'; a.click();
     URL.revokeObjectURL(url);
@@ -511,11 +493,12 @@ export default function App() {
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action}):</div>
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
-                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNextChange?.toFixed(2) ?? '--'} hrs</div>
+                {/* Corregido el toFixed para evitar error si hoursToNextChange es undefined */}
+                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext.toFixed(2)} hrs</div>
               </div>
 
               <div>
-                <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
+                <div className="text-xs text-gray-400">Horario **HOY** (Ciclo {cycleIndex + 1} de {cycleLength.toFixed(1)}h):</div>
                 <div className="text-sm grid grid-cols-2 gap-1 text-white">
                   <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
                   <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
