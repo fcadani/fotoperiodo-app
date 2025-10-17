@@ -123,7 +123,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS SOLICITADOS (Días transcurridos, Horarios del Día) =
+  // === CÁLCULOS SOLICITADOS ========================================
   // =================================================================
 
   // Días transcurridos (Días de Cultivo)
@@ -133,11 +133,30 @@ export default function App() {
     return Math.floor(diffDays);
   }, [now, startDateObj]);
 
-  // Horarios de Luz/Oscuridad del Día Actual
+  // 💡 NUEVO CÁLCULO: Ahorro de Horas de Luz
+  const lightSaving = useMemo(() => {
+    const daysElapsed = Math.max(0, daysSinceStart);
+    const standardLightHours = 12; // Base: 12 horas de luz en un ciclo 12/12 (24h)
+    
+    // Ahorro/Gasto de horas de luz en comparación con 12h estándar
+    const savingPerHour = standardLightHours - Number(hoursLight); 
+    
+    // El ahorro se aplica solo por cada ciclo de 24h
+    // Usaremos el día de cultivo como referencia de 24h
+    const totalSaving = savingPerHour * daysElapsed;
+
+    return {
+      savingPerHour: savingPerHour,
+      totalSaving: totalSaving,
+      comparison: savingPerHour === 0 ? 'Igual' : (savingPerHour > 0 ? 'Ahorro' : 'Gasto')
+    };
+  }, [daysSinceStart, hoursLight]);
+
+
+  // Horarios de Luz/Oscuridad del Día Actual (Mantenido)
   const lightScheduleToday = useMemo(() => {
     const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
     
-    // Buscar la hora de inicio de LUZ y Oscuridad
     let lightStartHour = -1;
     let darkStartHour = -1;
     
@@ -146,19 +165,12 @@ export default function App() {
       const isLight = isLightAtAbsoluteHours(hoursAbsolute);
       const isPrevLight = isLightAtAbsoluteHours(hoursAbsolute - 1);
 
-      // Detectar inicio de LUZ (cambio de D a L)
-      if (isLight && !isPrevLight && lightStartHour === -1) {
-          lightStartHour = h;
-      }
-      // Detectar inicio de OSCURIDAD (cambio de L a D)
-      if (!isLight && isPrevLight && darkStartHour === -1) {
-          darkStartHour = h;
-      }
+      if (isLight && !isPrevLight && lightStartHour === -1) lightStartHour = h;
+      if (!isLight && isPrevLight && darkStartHour === -1) darkStartHour = h;
     }
 
     const formatHour = (h) => (h % 24).toString().padStart(2, '0') + ':00';
     
-    // Caso 24L/0D o 0L/24D
     if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', isLight: false, lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
     if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', isLight: true, lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
 
@@ -168,27 +180,23 @@ export default function App() {
     let ds = 'N/A';
     let de = 'N/A';
 
-    // La luz empieza hoy (o la oscuridad acaba)
     if (lightStartHour !== -1) {
         ls = formatHour(lightStartHour);
         le = formatHour(lightStartHour + Number(hoursLight));
     } else {
-        // La luz empezó el día anterior. Calculamos cuándo termina
         if (darkStartHour !== -1) {
              le = formatHour(darkStartHour);
-             ls = formatHour(darkStartHour - Number(hoursLight)); // Hora de inicio real (día anterior)
+             ls = formatHour(darkStartHour - Number(hoursLight));
         }
     }
     
-    // La oscuridad empieza hoy (o la luz acaba)
     if (darkStartHour !== -1) {
         ds = formatHour(darkStartHour);
         de = formatHour(darkStartHour + Number(hoursDark));
     } else {
-        // La oscuridad empezó el día anterior. Calculamos cuándo termina
         if (lightStartHour !== -1) {
              de = formatHour(lightStartHour);
-             ds = formatHour(lightStartHour - Number(hoursDark)); // Hora de inicio real (día anterior)
+             ds = formatHour(lightStartHour - Number(hoursDark));
         }
     }
 
@@ -202,36 +210,26 @@ export default function App() {
     
   }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark]);
 
-  // =================================================================
-  // === NUEVO CÁLCULO: PRÓXIMO CAMBIO DE ESTADO (Luz/Oscuridad) =====
-  // =================================================================
-
+  // Próximo Cambio de Estado (Mantenido)
   const nextChangeEvent = useMemo(() => {
-    // 1. Calcular cuántas horas faltan para el inicio del próximo ciclo de luz (0 en el ciclo)
-    //    y para el inicio del próximo ciclo de oscuridad (hoursLight en el ciclo).
-
     let hoursToNextChange;
     let nextState;
 
     if (isNowLight) {
-        // Estamos en LUZ. El próximo cambio es a OSCURIDAD (Dark Start).
         const hoursInLightPeriod = currentInCycle;
         const hoursRemainingInLight = Number(hoursLight) - hoursInLightPeriod;
         hoursToNextChange = hoursRemainingInLight;
         nextState = 'Oscuridad';
     } else {
-        // Estamos en OSCURIDAD. El próximo cambio es a LUZ (Light Start).
         const hoursInDarkPeriod = currentInCycle - Number(hoursLight);
         const hoursRemainingInDark = Number(hoursDark) - hoursInDarkPeriod;
         hoursToNextChange = hoursRemainingInDark;
         nextState = 'Luz';
     }
 
-    // 2. Calcular la hora y fecha absoluta del cambio
     const diffMs = hoursToNextChange * (1000 * 60 * 60);
     const nextChangeDate = new Date(now.getTime() + diffMs);
 
-    // 3. Formato para la presentación
     const formattedDate = nextChangeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
     const formattedTime = nextChangeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -282,7 +280,7 @@ export default function App() {
   }
 
   // =================================================================
-  // === CLASES TAILWIND CSS MEJORADAS (Mantenidas de la estética previa)
+  // === CLASES TAILWIND CSS (Mantenidas) ============================
   // =================================================================
 
   const INPUT_CLASS = "w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out my-2";
@@ -386,7 +384,7 @@ export default function App() {
 
             </div>
 
-            {/* Progreso dentro del ciclo (MODIFICADO) */}
+            {/* Progreso dentro del ciclo */}
             <div className="mt-4">
               <label className="text-sm font-medium text-gray-700">Progreso dentro del ciclo</label>
               
@@ -402,6 +400,31 @@ export default function App() {
                   <span className="text-xs text-gray-500 ml-2"> (en {nextChangeEvent.hoursToNextChange.toFixed(2)} hrs)</span>
               </div>
 
+            </div>
+            
+            {/* NUEVA SECCIÓN DE AHORRO */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h3 className="text-xl font-semibold text-green-600 mb-2">Eficiencia del Cultivo</h3>
+              
+              <div className="text-sm space-y-2">
+                
+                <p>
+                  **Comparación vs 12L/12D:**
+                  <span className={`ml-2 px-2 py-0.5 rounded-md font-bold ${lightSaving.savingPerHour > 0 ? 'bg-yellow-100 text-yellow-800' : (lightSaving.savingPerHour < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')}`}>
+                    {Math.abs(lightSaving.savingPerHour).toFixed(1)} {lightSaving.comparison === 'Ahorro' ? 'horas menos' : (lightSaving.comparison === 'Gasto' ? 'horas más' : 'horas')} de luz por día
+                  </span>
+                </p>
+
+                <p className="text-lg font-bold">
+                  {lightSaving.comparison === 'Ahorro' ? '🟢 Ahorro Total:' : (lightSaving.comparison === 'Gasto' ? '🔴 Gasto Total:' : '🟡 Balance Total:')}
+                  <span className={`ml-2 text-2xl font-extrabold ${lightSaving.comparison === 'Ahorro' ? 'text-green-700' : (lightSaving.comparison === 'Gasto' ? 'text-red-700' : 'text-gray-700')}`}>
+                    {Math.abs(lightSaving.totalSaving).toFixed(1)} hrs
+                  </span>
+                </p>
+                <p className="text-xs text-gray-500 pt-1">
+                    *El cálculo se basa en el ciclo personalizado vs el ciclo común de 12L/12D, multiplicado por los días de cultivo transcurridos.
+                </p>
+              </div>
             </div>
           </div>
         </section>
