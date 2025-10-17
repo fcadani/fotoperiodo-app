@@ -3,7 +3,7 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- CORRECCIÓN CLAVE: Se corrige la lógica de fechas y horas en 'lightScheduleToday' para que los horarios ON/OFF coincidan exactamente con 'Próximo Evento' al cruzar la medianoche.
+- CORRECCIÓN CLAVE: Se corrige la inconsistencia de fechas y horas en 'Horario HOY' y se RESTAURA el bloque de OSCURIDAD para que todos los eventos sean visibles y coherentes.
 - MEJORA: Se restaura el formato Días/Horas/Minutos para el tiempo transcurrido.
 */
 
@@ -246,38 +246,48 @@ export default function App() {
     
     // 4. Calcular el tiempo absoluto del evento de fin (en horas)
     // El fin de una fase es el inicio de la siguiente. 
-    // Debido a que el ciclo (L+D) es mayor a 24h, los eventos pueden no caer en el mismo día 24h.
     
-    let finalLightEndRelative = null; // Hora de inicio de la oscuridad (OFF)
-    let finalDarkEndRelative = null;  // Hora de inicio de la luz (ON)
-
     // Si la luz empieza hoy, el fin de la luz (OFF) ocurre LightHours después del inicio de luz
+    let lightEndToFormat = null;
     if (lightStartHourToday !== null) {
-        finalLightEndRelative = lightStartHourToday + lightHours;
+        lightEndToFormat = lightStartHourToday + lightHours;
+    } else if (darkStartHourToday === 0) { 
+        // Si la oscuridad empezó a 0h, el final de la luz del ciclo anterior puede caer en este día 24h
+        // Buscamos el inicio de luz más cercano (que sería el final de la oscuridad de hoy),
+        // y retrocedemos la duración de luz.
+        if (darkStartHourToday !== null) {
+             // Este caso es complejo en un ciclo > 24h. Usamos el inicio de oscuridad (darkStartHourToday) 
+             // como el final de luz, si es que la luz termina en este día.
+             lightEndToFormat = darkStartHourToday; 
+        }
     }
+    
     // Si la oscuridad empieza hoy, el fin de la oscuridad (ON) ocurre DarkHours después del inicio de oscuridad
+    let darkEndToFormat = null;
     if (darkStartHourToday !== null) {
-        finalDarkEndRelative = darkStartHourToday + darkHours;
+        darkEndToFormat = darkStartHourToday + darkHours;
+    } else if (lightStartHourToday === 0) {
+        // Si la luz empezó a 0h, el final de la oscuridad del ciclo anterior puede caer en este día 24h
+        // Usamos el inicio de luz (lightStartHourToday) como el final de oscuridad, si la oscuridad termina en este día.
+        darkEndToFormat = lightStartHourToday; 
+    }
+    
+    // Si la luz comienza a 0h, su final es lightStartHourToday + lightHours
+    if (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday > 0) {
+      // El fin de la luz (OFF) es el inicio de oscuridad
+      lightEndToFormat = darkStartHourToday;
+      // El fin de la oscuridad (ON) es el inicio de luz del siguiente ciclo (darkStartHourToday + darkHours)
+      darkEndToFormat = darkStartHourToday + darkHours; 
+    } 
+    // Si la oscuridad comienza a 0h, su final es darkStartHourToday + darkHours
+    else if (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday > 0) {
+      // El fin de la oscuridad (ON) es el inicio de luz
+      darkEndToFormat = lightStartHourToday;
+      // El fin de la luz (OFF) es el inicio de oscuridad del siguiente ciclo (lightStartHourToday + lightHours)
+      lightEndToFormat = lightStartHourToday + lightHours; 
     }
 
-    // Si el inicio de oscuridad fue el que empezó a 0h, la luz del día empieza en lightStartHourToday. 
-    // El final de la oscuridad (ON) es ese inicio de luz.
-    if (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday > 0) {
-        finalDarkEndRelative = lightStartHourToday;
-    } 
-    // Si el inicio de luz fue el que empezó a 0h, la oscuridad del día empieza en darkStartHourToday. 
-    // El final de la luz (OFF) es ese inicio de oscuridad.
-    else if (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday > 0) {
-        finalLightEndRelative = darkStartHourToday;
-    }
-    
-    // En ciclos > 24h, la fase que inicia a 0h termina al inicio de la fase opuesta en el mismo ciclo (L+D horas después).
-    // Usamos el cálculo simple de duración para asegurar que el evento de fin sea el correcto,
-    // y el formateador de fecha/hora se encargará del salto de día.
-    
-    const lightEndToFormat = lightStartHourToday !== null ? lightStartHourToday + lightHours : null;
-    const darkEndToFormat = darkStartHourToday !== null ? darkStartHourToday + darkHours : null;
-    
+
     return {
       status: null,
       lightStart: formatDateTime(lightStartHourToday),
@@ -488,6 +498,17 @@ export default function App() {
                     <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">OFF (Fin Luz / Próx. Apagado):</span> 
                     <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
                   </div>
+                  
+                  {/* ESTE ES EL BLOQUE QUE FALTABA O ESTABA INCOMPLETO */}
+                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
+                    <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
+                    <div className="font-mono text-lg">{lightScheduleToday.darkStart}</div>
+                    
+                    <span className="text-emerald-400 font-semibold block mt-3 mb-1 text-base">ON (Fin Oscuridad / Próx. Encendido):</span> 
+                    <div className="font-mono text-lg">{lightScheduleToday.darkEnd}</div>
+                  </div>
+                  {/* FIN BLOQUE RESTAURADO */}
+                  
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
