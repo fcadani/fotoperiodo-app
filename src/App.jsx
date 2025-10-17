@@ -68,6 +68,11 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -235,21 +240,21 @@ export default function App() {
       return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
-    // 1. Determinar el inicio del ciclo actual
+    // 1. Determinar el inicio del ciclo actual (CORREGIDO)
     const cycleIndex = Math.floor(hoursSinceStartNow / cycleLength);
-    const cycleStartHoursSinceStart = cycleIndex * cycleLength;
-
+    const cycleStartAbsoluteHours = cycleIndex * cycleLength; // Definición correcta
+    
     // 2. Determinar la hora de encendido (Luz) y apagado (Oscuridad) ABSOLUTA
     let lightStartAbsoluteHours = -1;
     let darkStartAbsoluteHours = -1;
     
     // Si la luz empieza al inicio del ciclo (0), el dark start es lightHours
-    if (isLightAtAbsoluteHours(cycleStartHoursSinceStart)) {
-        lightStartAbsoluteHours = cycleStartHoursSinceStart;
+    if (isLightAtAbsoluteHours(cycleStartAbsoluteHours)) {
+        lightStartAbsoluteHours = cycleStartAbsoluteHours;
         darkStartAbsoluteHours = cycleStartAbsoluteHours + lightHours;
     } else {
         // Si la oscuridad empieza al inicio del ciclo (0), el light start es darkHours
-        darkStartAbsoluteHours = cycleStartHoursSinceStart;
+        darkStartAbsoluteHours = cycleStartAbsoluteHours;
         lightStartAbsoluteHours = cycleStartAbsoluteHours + darkHours;
     }
 
@@ -271,9 +276,6 @@ export default function App() {
     
     const darkStartLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours);
     const darkEndLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours + darkHours);
-    
-    // Los horarios deben estar dentro del mismo ciclo, así que no es necesario el chequeo de 24h.
-    // Simplemente se muestran los puntos de inicio y fin del ciclo en curso.
     
     return {
       status: `Horario del ciclo actual (${cycleLength.toFixed(1)}h)`,
