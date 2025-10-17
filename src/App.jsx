@@ -3,8 +3,9 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- CORRECCIÓN CLAVE 1: La Fecha de Inicio ahora marca el INICIO de la fase de OSCURIDAD.
-- CORRECCIÓN CLAVE 2: El resaltado del calendario (cuadro rojo) se sincroniza directamente con la fecha y hora actual de la PC (Día N, Hora H) sin depender del ciclo.
+- CORRECCIÓN CLAVE 1: La Fecha de Inicio ahora marca el INICIO de la fase de OSCURIDAD (D).
+- CORRECCIÓN CLAVE 2: Se corrige la lógica del calendario para que las celdas L/D se sincronicen con la hora de inicio exacta.
+- CORRECCIÓN CLAVE 3: La primera columna del calendario ahora muestra las FECHAS reales (17/10, 18/10, etc.) en lugar de "Día 1".
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -95,10 +96,6 @@ export default function App() {
     return sum > 0 ? sum : 0.0000001; // avoid zero division
   }, [hoursLight, hoursDark]);
 
-  const fractionalStartOffset = useMemo(() => {
-    return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
-  }, [startDateObj]);
-
   const hoursSinceStartNow = useMemo(() => {
     return (now.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
   }, [now, startDateObj]);
@@ -107,7 +104,8 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
-  // *** CORRECCIÓN CLAVE 1: La luz es activa solo si el tiempo en ciclo es >= hoursDark (es decir, la oscuridad comienza en la hora 0)
+  // *** CORRECCIÓN CLAVE 1: La fecha de inicio ahora marca el inicio de la fase de oscuridad (D).
+  // La luz (L) solo es activa si el tiempo en ciclo es mayor o igual a 'hoursDark'.
   const isNowLight = useMemo(() => {
     return currentInCycle >= Number(hoursDark);
   }, [currentInCycle, hoursDark]);
@@ -115,8 +113,8 @@ export default function App() {
   // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
   
-  
-  // *** CORRECCIÓN CLAVE 2: Cálculo del índice del día (0-index) sincronizado con la fecha de la PC
+  // Para el calendario y el horario de hoy (basado en día de 24h)
+  const currentHourIndex = useMemo(() => now.getHours(), [now]);
   const currentDayIndex24h = useMemo(() => {
     const startOfDayNow = new Date(now);
     startOfDayNow.setHours(0, 0, 0, 0); 
@@ -124,16 +122,12 @@ export default function App() {
     const startOfDayStart = new Date(startDateObj);
     startOfDayStart.setHours(0, 0, 0, 0);
     
-    // Calcula los días exactos transcurridos desde el inicio (en días de 24h)
     const daysSinceStart = (startOfDayNow.getTime() - startOfDayStart.getTime()) / (1000 * 60 * 60 * 24);
     return Math.floor(daysSinceStart);
   }, [now, startDateObj]);
 
-  // *** CORRECCIÓN CLAVE 2: La hora actual (0-23) es la hora de la PC
-  const currentHourIndex = useMemo(() => now.getHours(), [now]);
 
-
-  // *** CORRECCIÓN CLAVE 1: La luz es activa solo si el tiempo en ciclo es >= hoursDark
+  // *** CORRECCIÓN CLAVE 1: La luz (L) solo es activa si el tiempo en ciclo es mayor o igual a 'hoursDark'.
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle >= Number(hoursDark);
@@ -178,21 +172,33 @@ export default function App() {
   // ---- FIN FORMATO DE TIEMPO TRANSCURRIDO ----
   
   // ---- Build calendar data (array of days x 24) ----
+  // *** CORRECCIÓN CLAVE 2: Se corrige la lógica del offset para sincronizar el L/D con la hora de inicio exacta.
   const calendar = useMemo(() => {
     const rows = [];
     const days = clamp(Number(durationDays) || 0, 1, 9999); 
+    
+    // Obtener la fecha de inicio del ciclo (a la medianoche) para calcular el desfase
+    const midnightStartDate = new Date(startDateObj);
+    midnightStartDate.setHours(0, 0, 0, 0);
+
+    // Calcular el desfase total en horas desde la medianoche del día de inicio
+    const initialHoursOffset = (startDateObj.getTime() - midnightStartDate.getTime()) / (1000 * 60 * 60);
+
     for (let d = 0; d < days; d++) {
       const row = [];
       for (let h = 0; h < 24; h++) {
-        // La compensación de la hora de inicio (fractionalStartOffset) se aplica para alinear 
-        // el inicio del ciclo con el inicio del día 1 a la hora 0.
-        const hoursSinceStart = d * 24 + h - fractionalStartOffset;
+        // Horas transcurridas desde la medianoche del Día 1.
+        // d * 24 + h = Horas en el calendario (0h, 1h, ... 23h del día 1, 0h del día 2, etc.)
+        // Le restamos el desfase (initialHoursOffset) para que la hora 'h' del día 'd' 
+        // esté sincronizada con la hora 'h' real de la fecha de inicio.
+        const hoursSinceStart = d * 24 + h - initialHoursOffset;
+        
         row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
       }
       rows.push(row);
     }
     return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength]);
+  }, [durationDays, startDateObj, cycleLength, hoursDark]);
 
   // ---- Determine today's precise schedule (encendido/apagado) ----
   const lightScheduleToday = useMemo(() => {
@@ -209,12 +215,13 @@ export default function App() {
     // 2. Determinar si 'now' está en Luz o en Oscuridad y establecer el inicio de Luz
     let lightStartAbsolute;
     
+    // La luz empieza hoursDark horas después del inicio del ciclo
     if (isNowLight) {
       // Si estamos en LUZ, el inicio fue 'hoursDark' horas después del inicio del ciclo actual.
       lightStartAbsolute = currentCycleStartAbsoluteHours + darkHours;
     } else {
-      // Si estamos en OSCURIDAD, el inicio de luz será en el ciclo actual.
-      lightStartAbsolute = currentCycleStartAbsoluteHours + darkHours;
+      // Si estamos en OSCURIDAD, el inicio de luz fue en el ciclo anterior.
+      lightStartAbsolute = currentCycleStartAbsoluteHours - cycleLen + darkHours;
     }
 
     // El fin de luz es siempre la hora de inicio de luz + la duración de luz.
@@ -222,21 +229,17 @@ export default function App() {
 
     // Aseguramos que la fase de LUZ mostrada en Horario HOY sea la más relevante 
     // Si la fase de luz terminó antes de ahora, la ajustamos para mostrar la próxima fase de luz que viene.
-    // O si aún no empezó, ajustamos a la anterior para mostrar el OFF si estamos en oscuridad.
-    
-    // Caso 1: Si lightEndAbsolute ya pasó, avanzamos al siguiente ciclo
     while (lightEndAbsolute < hoursSinceStartNow) {
         lightStartAbsolute += cycleLen;
         lightEndAbsolute += cycleLen;
     }
     
-    // Caso 2: Si estamos en Oscuridad, y lightStartAbsolute es futuro, 
-    // debemos retroceder un ciclo para mostrar la fase de luz anterior (OFF)
+    // Si la próxima fase de luz empieza después de 'now' y estamos en oscuridad, 
+    // retrocedemos un ciclo para mostrar el OFF si estamos cerca de la transición.
     if (!isNowLight && lightStartAbsolute > hoursSinceStartNow) {
          lightStartAbsolute -= cycleLen;
          lightEndAbsolute -= cycleLen;
     }
-    
 
     // Función para formatear la fecha y hora absoluta (con mes, día, hora, min)
     const formatDateTime = (hAbsolute) => {
@@ -264,12 +267,29 @@ export default function App() {
     let hoursToNext;
     let nextState;
     if (isNowLight) {
-      hoursToNext = Number(hoursLight) - currentInCycle;
+      hoursToNext = cycleLength - currentInCycle - darkHours; // Tiempo restante de luz
+      if (hoursToNext < 0) hoursToNext += cycleLength; // Ajuste si la luz ya terminó
       nextState = 'Oscuridad';
     } else {
-      hoursToNext = cycleLength - currentInCycle;
+      hoursToNext = Number(hoursDark) - currentInCycle; // Tiempo restante de oscuridad
+      if (hoursToNext < 0) hoursToNext += cycleLength; // Ajuste si la oscuridad ya terminó
       nextState = 'Luz';
     }
+    
+    // Recalcular correctamente el tiempo a la siguiente transición (menos propenso a errores)
+    let hoursUntilNextEvent;
+    if (isNowLight) {
+        // Estamos en LUZ. La transición es a OSCURIDAD, que ocurre en hoursLight.
+        hoursUntilNextEvent = Number(hoursLight) - currentInCycle + Number(hoursDark);
+    } else {
+        // Estamos en OSCURIDAD. La transición es a LUZ, que ocurre en hoursDark.
+        hoursUntilNextEvent = Number(hoursDark) - currentInCycle;
+    }
+    // Aseguramos que sea positivo y esté en el rango del ciclo
+    hoursUntilNextEvent = ((hoursUntilNextEvent % cycleLength) + cycleLength) % cycleLength;
+    
+    hoursToNext = hoursUntilNextEvent;
+
     if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
     return {
@@ -280,6 +300,18 @@ export default function App() {
       action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
+
+  // ---- Helper para obtener la fecha de un día del calendario (CORRECCIÓN CLAVE 3) ----
+  const getCalendarDate = useCallback((dayIndex) => {
+    const d = new Date(startDateObj);
+    // Movemos la fecha de inicio a la medianoche para contar días completos correctamente
+    d.setHours(0, 0, 0, 0);
+    // Sumamos los días del índice (dayIndex)
+    d.setDate(d.getDate() + dayIndex);
+    
+    // Formato: 17/10
+    return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+  }, [startDateObj]);
 
   // ---- export / import / reset ----
   const handleExport = useCallback(() => {
@@ -474,7 +506,7 @@ export default function App() {
           {/* Calendar full width below */}
           <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
-              <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
+              <h4 className="font-semibold text-white text-lg">Calendario (Fecha × Hora)</h4>
               <div className="text-sm text-gray-400">{durationDays} días</div>
             </div>
 
@@ -482,7 +514,8 @@ export default function App() {
               <table className="min-w-full text-xs text-gray-200">
                 <thead className="bg-slate-800 sticky top-0 shadow-md">
                   <tr>
-                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Día</th>
+                    {/* *** CORRECCIÓN CLAVE 3: Reemplazado "Día" por "Fecha" *** */}
+                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Fecha</th>
                     {Array.from({length:24}).map((_,h) => (
                       <th key={h} className="p-2 text-center text-sm text-gray-300 w-8">{h}h</th>
                     ))}
@@ -491,7 +524,10 @@ export default function App() {
                 <tbody>
                   {calendar.map((row, d) => (
                     <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
+                      {/* *** CORRECCIÓN CLAVE 3: Se usa getCalendarDate(d) para la fecha real *** */}
+                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
+                          {getCalendarDate(d)}
+                      </td>
                       {row.map((isLight, h) => {
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
