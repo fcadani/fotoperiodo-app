@@ -3,8 +3,7 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- MEJORA ESTÉTICA: Fondo unificado (degradado) y eliminación de contenedores de fondo secundarios.
-- Se mantiene el bloque de Horario **HOY** con formato ON/OFF y fecha/hora completa.
+- MEJORA: El tiempo transcurrido ahora se muestra en formato Días, Horas y Minutos.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -32,9 +31,7 @@ function fmtDateTimeLocal(d) {
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
-    // Current time is Friday, October 17, 2025 at 7:21:26 PM -03.
-    const d = new Date(2025, 9, 17); // 17 de Octubre de 2025
-    d.setHours(0,0,0,0);
+    const d = new Date(); d.setHours(0,0,0,0);
     return fmtDateTimeLocal(d);
   });
 
@@ -144,10 +141,29 @@ export default function App() {
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
   
-  // ---- Días 24 hs (Duración equivalente en ciclos de 24h) ----
-  const days24h = useMemo(() => {
-    return hoursSinceStartNow / 24;
+  // ---- FORMATO DE TIEMPO TRANSCURRIDO (DÍAS, HORAS, MINUTOS) ----
+  const formattedTimeElapsed = useMemo(() => {
+    if (hoursSinceStartNow < 0) return { days: 0, hours: 0, minutes: 0, display: "0 días" };
+
+    let totalMinutes = Math.floor(hoursSinceStartNow * 60);
+    const days = Math.floor(totalMinutes / (24 * 60));
+    totalMinutes %= (24 * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    let parts = [];
+    if (days > 0) parts.push(`${days} d`);
+    if (hours > 0 || (days === 0 && minutes > 0)) parts.push(`${hours} h`);
+    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`); // Mostrar minutos solo si no hay días/horas
+
+    return { 
+        days, 
+        hours, 
+        minutes, 
+        display: parts.length > 0 ? parts.join(' y ') : '0 d' 
+    };
   }, [hoursSinceStartNow]);
+  // ---- FIN FORMATO DE TIEMPO TRANSCURRIDO ----
   
   // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
@@ -208,7 +224,7 @@ export default function App() {
           (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
     }
 
-    // ** MODIFICACIÓN CLAVE: Formatear a fecha/hora completa **
+    // ** MODIFICACIÓN CLAVE: Formatear a fecha/hora completa (Restaurada de la versión anterior) **
     const formatDateTime = (h) => {
       if (h === null) return 'N/A';
       const totalMinutes = Math.round(h * 60);
@@ -229,7 +245,6 @@ export default function App() {
       });
     };
     // ** FIN MODIFICACIÓN CLAVE **
-
 
     let lightEndHourToday = null;
     let darkEndHourToday = null;
@@ -349,7 +364,7 @@ export default function App() {
 
         <main className="grid lg:grid-cols-3 gap-6">
 
-          {/* Configuration - Se eliminó bg-slate-800 */}
+          {/* Configuration - Se usa un fondo semi-transparente para la uniformidad */}
           <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
             <h2 className="text-lg font-semibold mb-4 text-white">Configuración</h2>
 
@@ -396,7 +411,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* Status - Se eliminó bg-slate-900 */}
+          {/* Status - Se usa un fondo semi-transparente para la uniformidad */}
           <aside className="p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
             <h3 className="text-lg font-semibold mb-4 text-white">Estado</h3>
 
@@ -417,10 +432,12 @@ export default function App() {
                   </div>
                   <div className="text-right">
                       <div className="text-xs font-extrabold text-white">DÍAS 24 HS</div>
-                      <div className="font-mono text-3xl text-white">
-                          {Math.max(0, days24h).toFixed(2)}
+                      <div className="font-mono text-xl text-white mt-1">
+                          {/* ** MODIFICACIÓN CLAVE: Usar el tiempo formateado ** */}
+                          {formattedTimeElapsed.display} 
+                          {/* ** FIN MODIFICACIÓN CLAVE ** */}
                       </div>
-                       <div className="text-xs text-gray-400 mt-1">(Tiempo transcurrido en días 24h)</div>
+                       <div className="text-xs text-gray-400 mt-1">(Tiempo transcurrido)</div>
                   </div>
               </div>
               {/* FIN Días de Cultivo y Superciclo */}
@@ -474,22 +491,11 @@ export default function App() {
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
               {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
-              
-              {/* BLOQUE ELIMINADO:
-              <div>
-                <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-2 gap-1 text-white">
-                  <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
-                  <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
-                </div>
-                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
-              </div>
-              */}
 
             </div>
           </aside>
 
-          {/* Calendar full width below - Se eliminó bg-slate-900 */}
+          {/* Calendar full width below */}
           <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
               <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
