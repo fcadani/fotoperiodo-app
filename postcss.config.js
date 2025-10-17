@@ -1,7 +1,7 @@
 // postcss.config.js
 export default {
   plugins: {
-    tailwindcss: {},
+    tailwindcss: {}, // Notar que es el objeto
     autoprefixer: {},
   },
 }
