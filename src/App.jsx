@@ -133,52 +133,45 @@ export default function App() {
     return Math.floor(diffDays);
   }, [now, startDateObj]);
 
-  // Ahorro de Horas de Luz
+  // Ahorro de Horas de Luz (vs 12L/12D)
   const lightSaving = useMemo(() => {
     const daysElapsed = Math.max(0, daysSinceStart);
     const standardLightHours = 12; 
     
+    // Si hoursLight es 10, savingPerHour es 12 - 10 = +2 (Ahorro)
+    // Si hoursLight es 14, savingPerHour es 12 - 14 = -2 (Gasto)
     const savingPerHour = standardLightHours - Number(hoursLight); 
     const totalSaving = savingPerHour * daysElapsed;
 
     return {
-      savingPerHour: savingPerHour,
       totalSaving: totalSaving,
-      comparison: savingPerHour === 0 ? 'Igual' : (savingPerHour > 0 ? 'Ahorro' : 'Gasto')
     };
   }, [daysSinceStart, hoursLight]);
 
 
-  // Horarios de Luz/Oscuridad del Día Actual
+  // Horarios de Luz/Oscuridad del Día Actual (Formato AM/PM)
   const lightScheduleToday = useMemo(() => {
-    // Horas absolutas desde el inicio (en el punto de inicio del día actual)
     const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
     
     let lightStartHour = -1;
     let darkStartHour = -1;
     
-    // Iteramos a través de las 24 horas del día actual (0 a 23)
     for (let h = 0; h < 24; h++) {
       const hoursAbsolute = currentDayStartHoursSinceStart + h;
       const isLight = isLightAtAbsoluteHours(hoursAbsolute);
       const isPrevLight = isLightAtAbsoluteHours(hoursAbsolute - 1);
 
-      // El ciclo cambia a luz (L -> D)
       if (isLight && !isPrevLight && lightStartHour === -1) lightStartHour = h;
-      // El ciclo cambia a oscuridad (D -> L)
       if (!isLight && isPrevLight && darkStartHour === -1) darkStartHour = h;
     }
 
-    // NUEVO FORMATO: Convertir hora militar a AM/PM
     const formatHour = (h) => {
         const militaryHour = Math.round(h % 24);
         const date = new Date();
-        date.setHours(militaryHour, 0, 0, 0); // Establece la hora militar
-        // Usa toLocaleTimeString para obtener el formato AM/PM
+        date.setHours(militaryHour, 0, 0, 0); 
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     };
     
-    // Casos extremos
     if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', isLight: false, lightStart: 'N/A', lightEnd: 'N/A', darkStart: formatHour(0), darkEnd: formatHour(24) };
     if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', isLight: true, lightStart: formatHour(0), lightEnd: formatHour(24), darkStart: 'N/A', darkEnd: 'N/A' };
 
@@ -188,24 +181,20 @@ export default function App() {
     let ds = 'N/A';
     let de = 'N/A';
 
-    // Cálculo de inicio/fin de luz
     if (lightStartHour !== -1) {
         ls = formatHour(lightStartHour);
         le = formatHour(lightStartHour + Number(hoursLight));
     } else {
-        // La luz comenzó en el día anterior
         if (darkStartHour !== -1) {
              le = formatHour(darkStartHour);
              ls = formatHour(darkStartHour - Number(hoursLight));
         }
     }
     
-    // Cálculo de inicio/fin de oscuridad
     if (darkStartHour !== -1) {
         ds = formatHour(darkStartHour);
         de = formatHour(darkStartHour + Number(hoursDark));
     } else {
-        // La oscuridad comenzó en el día anterior
         if (lightStartHour !== -1) {
              de = formatHour(lightStartHour);
              ds = formatHour(lightStartHour - Number(hoursDark));
@@ -243,8 +232,6 @@ export default function App() {
     const nextChangeDate = new Date(now.getTime() + diffMs);
 
     const formattedDate = nextChangeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    
-    // Formato AM/PM para el próximo cambio
     const formattedTime = nextChangeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
     return {
@@ -270,8 +257,6 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
-  // Se eliminó handleImport y el input de Importar JSON
-
   function resetDefaults() {
     const d = new Date(); d.setHours(0,0,0,0);
     setStartDate(d.toISOString().slice(0,16));
@@ -294,21 +279,15 @@ export default function App() {
   const PRIMARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-${PRIMARY_COLOR}-600 text-white hover:bg-${PRIMARY_COLOR}-700 
                                 shadow-${PRIMARY_COLOR}-500/50`;
   
-  const SECONDARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-${ACCENT_COLOR}-500 text-white hover:bg-${ACCENT_COLOR}-600 
-                                  shadow-${ACCENT_COLOR}-500/50`;
-  
   const TERTIARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-none border border-gray-200`;
   
   const CARD_CLASS = "p-7 bg-white rounded-3xl shadow-2xl shadow-gray-200/50 transition duration-500 hover:shadow-3xl";
 
-  // Función de formato para la fecha de inicio
   const formatStartDate = (dateObj) => {
-    // También se cambia a AM/PM aquí
     return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
   return (
-    // Fondo más profesional y fuente estándar
     <div className="min-h-screen bg-gray-100 text-gray-800 p-8 font-sans">
       <div className="max-w-7xl mx-auto">
         <header className="mb-10 text-center">
@@ -360,7 +339,6 @@ export default function App() {
             </div>
 
             <div className="flex flex-wrap gap-3 mt-6 pt-5 border-t border-gray-200">
-              {/* Opción 'Importar JSON' Eliminada */}
               <button onClick={handleExport} className={PRIMARY_BUTTON_CLASS}>Exportar JSON</button>
               <button onClick={resetDefaults} className={TERTIARY_BUTTON_CLASS}>Restablecer Valores</button>
             </div>
@@ -409,7 +387,7 @@ export default function App() {
                   </p>
               </div>
 
-              {/* Horarios del Día Actual (AHORA EN AM/PM) */}
+              {/* Horarios del Día Actual (AM/PM) */}
               <div className="pt-3 border-t border-gray-100">
                 <h3 className="font-bold text-gray-900 mb-2">Horario de Hoy:</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -421,28 +399,28 @@ export default function App() {
 
             </div>
 
-            {/* SECCIÓN DE AHORRO */}
+            {/* SECCIÓN DE AHORRO (SIMPLIFICADA) */}
             <div className="mt-6 pt-5 border-t border-gray-200">
-              <h3 className={`text-xl font-bold text-${ACCENT_COLOR}-600 mb-2`}>Eficiencia (vs 12L/12D)</h3>
+              <h3 className={`text-xl font-bold text-${ACCENT_COLOR}-600 mb-2`}>Ahorro de Horas Luz (vs 12L/12D)</h3>
               
-              <div className="text-sm space-y-2">
-                
-                <p>
-                  **Diferencia diaria:**
-                  <span className={`ml-2 px-2 py-0.5 rounded-md font-bold text-xs ${lightSaving.savingPerHour > 0 ? 'bg-green-100 text-green-800' : (lightSaving.savingPerHour < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')}`}>
-                    {Math.abs(lightSaving.savingPerHour).toFixed(1)} {lightSaving.comparison === 'Ahorro' ? 'horas menos' : (lightSaving.comparison === 'Gasto' ? 'horas más' : 'horas')}
-                  </span>
+              <div className="p-3 rounded-xl bg-white border border-gray-100 shadow-md">
+                <p className="text-sm font-medium">Balance Total:</p>
+                <p className="text-3xl font-extrabold mt-1">
+                    <span className={`${lightSaving.totalSaving > 0 ? 'text-green-700' : (lightSaving.totalSaving < 0 ? 'text-red-700' : 'text-gray-700')}`}>
+                        {lightSaving.totalSaving > 0 ? '+' : ''}{lightSaving.totalSaving.toFixed(1)} 
+                    </span>
+                    <span className="text-base text-gray-500 font-normal ml-1">horas</span>
                 </p>
-
-                <div className="p-3 rounded-lg bg-white border border-gray-100 shadow-sm">
-                  <p className="text-sm font-medium">Balance Total:</p>
-                  <p className="text-2xl font-extrabold mt-1">
-                    <span className={`${lightSaving.comparison === 'Ahorro' ? 'text-green-700' : (lightSaving.comparison === 'Gasto' ? 'text-red-700' : 'text-gray-700')}`}>
-                      {lightSaving.totalSaving > 0 ? '+' : ''}{lightSaving.totalSaving.toFixed(1)}
-                    </span> 
-                    <span className="text-base text-gray-500 font-normal ml-1">hrs ahorradas</span>
-                  </p>
-                </div>
+                
+                {/* Leyenda más clara */}
+                <p className="text-xs text-gray-500 mt-2">
+                    {lightSaving.totalSaving > 0 
+                        ? 'El valor positivo indica que has usado menos horas luz que el ciclo estándar (Ahorro de Luz).'
+                        : (lightSaving.totalSaving < 0 
+                            ? 'El valor negativo indica que has usado más horas luz que el ciclo estándar (Gasto Extra).'
+                            : 'Estás usando exactamente 12 horas de luz, igual que el ciclo estándar.')
+                    }
+                </p>
               </div>
             </div>
           </div>
@@ -464,7 +442,6 @@ export default function App() {
               <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="p-3 border-r text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-gray-50">Día</th>
-                  {/* Se mantiene el formato de 24h en la tabla para coherencia con la columna de hora */}
                   {Array.from({length:24}).map((_,h) => (
                     <th key={h} className="p-3 border-r text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
                   ))}

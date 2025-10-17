@@ -1,6 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css' // Importación CLAVE del CSS de Tailwind
+import './index.css'
 import App from './App.jsx' // O './fotoperiodo_app.jsx' si ese es el nombre del archivo
 
 // Asegúrate de que este 'root' existe en tu index.html
