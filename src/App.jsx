@@ -28,17 +28,14 @@ Requisitos:
  * - Se usan comillas simples/dobles para clases estáticas para evitar problemas con Template Literals.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final limpio, funcional y con correcciones de errores de sintaxis y lógica (toFixed).
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-// Importar solo si tienes la librería instalada:
-// import { Sun, Moon, Download, Upload, RefreshCw } from "lucide-react"; 
-
-// Si no tienes lucide-react instalado, puedes usar esto como iconos de fallback:
-const Sun = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.93 19.07l1.41-1.41"></path><path d="M17.66 6.34l1.41-1.41"></path></svg>;
-const Moon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>;
-const Download = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
-const Upload = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
-const RefreshCw = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.5 15a9 9 0 0 1 16.5-3"></path><path d="M20.5 9a9 9 0 0 0-16.5 3"></path></svg>;
-
+// Asegúrate de tener 'lucide-react' instalado: npm install lucide-react
+import { Sun, Moon, Download, Upload, RefreshCw } from "lucide-react";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
@@ -73,7 +70,6 @@ export default function App() {
   const [now, setNow] = useState(new Date());
   const [errorMsg, setErrorMsg] = useState("");
 
-  // ... (Funciones de useEffect, useCallback, useMemo, etc. son las mismas) ...
   // ---- Load saved settings on mount ----
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -86,7 +82,7 @@ export default function App() {
     if (Number.isFinite(Number(obj.durationDays))) setDurationDays(Number(obj.durationDays));
   }, []);
 
-  // ---- Autosave (debounced simple) ----
+  // ---- Autosave ----
   useEffect(() => {
     const payload = { startDate, hoursLight, hoursDark, durationDays };
     const id = setTimeout(() => {
@@ -98,7 +94,7 @@ export default function App() {
 
   // ---- Tick ----
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000);
+    const id = setInterval(() => setNow(new Date()), 30000); // 30s
     return () => clearInterval(id);
   }, []);
 
@@ -123,7 +119,7 @@ export default function App() {
 
   const cycleLength = useMemo(() => {
     const sum = Number(hoursLight) + Number(hoursDark);
-    return sum > 0 ? sum : 0.0000001;
+    return sum > 0 ? sum : 0.0000001; // Evita división por cero
   }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
@@ -150,6 +146,7 @@ export default function App() {
     return inCycle < Number(hoursLight);
   }
 
+  // ---- Build calendar data ----
   const calendar = useMemo(() => {
     const rows = [];
     const days = clamp(Number(durationDays) || 0, 1, 9999);
@@ -164,6 +161,7 @@ export default function App() {
     return rows;
   }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
 
+  // ---- determine today's schedule (approx) ----
   const lightScheduleToday = useMemo(() => {
     const dayIndex = currentDayIndex;
     const dayStartHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
@@ -196,6 +194,7 @@ export default function App() {
     return { status: null, lightStart: ls, lightEnd: le, darkStart: ds, darkEnd: de };
   }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark, startDateObj]);
 
+  // ---- next change event ----
   const nextChangeEvent = useMemo(() => {
     let hoursToNext;
     let nextState;
@@ -217,6 +216,7 @@ export default function App() {
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
 
+  // ---- export / import / reset ----
   const handleExport = useCallback(() => {
     const payload = { startDate, hoursLight, hoursDark, durationDays };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -249,11 +249,13 @@ export default function App() {
     setHoursLight(13); setHoursDark(14); setDurationDays(60);
   }, []);
 
+  // ---- small UI helpers ----
   const formatStartDate = useCallback((dObj) => {
     if (!dObj || isNaN(dObj.getTime())) return '--';
     return dObj.toLocaleString();
   }, []);
 
+  // run validation to show errors early
   useEffect(() => { validateInputs(); }, [validateInputs]);
 
   // ---- JSX ----
@@ -341,15 +343,14 @@ export default function App() {
 
               <div>
                 <div className="text-xs text-gray-500">Estado del ciclo:</div>
-                <div className={'inline-block px-3 py-1 rounded-full text-xs font-semibold ' + (isNowLight ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800')}>
-                    {isNowLight ? 'LUZ' : 'OSCURIDAD'}
-                </div>
+                <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${isNowLight ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{isNowLight ? 'LUZ' : 'OSCURIDAD'}</div>
               </div>
 
               <div>
                 <div className="text-xs text-gray-500">Próximo evento:</div>
                 <div className="font-semibold">{nextChangeEvent.nextState} — {nextChangeEvent.time}</div>
-                <div className="text-xs text-gray-500">En {nextChangeEvent.hoursToNextChange.toFixed(2)} horas</div>
+                {/* CORRECCIÓN FINAL: Uso de encadenamiento opcional para evitar TypeError: toFixed de undefined */}
+                <div className="text-xs text-gray-500">En {nextChangeEvent.hoursToNextChange?.toFixed(2) ?? '--'} horas</div>
               </div>
 
               <div>
@@ -381,16 +382,13 @@ export default function App() {
                 </thead>
                 <tbody>
                   {calendar.map((row, d) => (
-                    <tr key={d} className={(d === currentDayIndex ? 'bg-yellow-50' : '')}>
-                      <td className={'p-1 sticky left-0 bg-white dark:bg-slate-900 text-sm font-semibold'}>{d+1}</td>
+                    <tr key={d} className={`${d === currentDayIndex ? 'bg-yellow-50' : ''}`}>
+                      <td className={`p-1 sticky left-0 bg-white dark:bg-slate-900 text-sm font-semibold`}>{d+1}</td>
                       {row.map((isLight, h) => {
                         const isCurrent = d === currentDayIndex && h === currentHourIndex;
-                        const cellClass = isLight ? 'bg-yellow-100 text-yellow-800' : 'bg-indigo-100 text-indigo-800';
-                        const ringClass = isCurrent ? 'ring-2 ring-red-400 shadow-lg' : '';
-
                         return (
                           <td key={h} className="p-0.5">
-                            <div className={'w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold transition-all ' + cellClass + ' ' + ringClass}>
+                            <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold transition-all ${isLight ? 'bg-yellow-100 text-yellow-800' : 'bg-indigo-100 text-indigo-800'} ${isCurrent ? 'ring-2 ring-red-400 shadow-lg' : ''}`}>
                               {isLight ? 'L' : 'D'}
                             </div>
                           </td>
