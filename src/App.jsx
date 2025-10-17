@@ -25,7 +25,7 @@ export default function App() {
   });
 
   const [hoursLight, setHoursLight] = useState(13);
-  const [hoursDark, setHoursDark] = useState(14);
+  const [hoursDark, setHoursLight] = useState(14);
   const [durationDays, setDurationDays] = useState(60);
   
   const [now, setNow] = useState(new Date());
@@ -101,6 +101,7 @@ export default function App() {
     return diffMs / (1000 * 60 * 60);
   }, [now, startDateObj]);
 
+  // Hora actual dentro del ciclo (0 a cycleLength)
   const currentInCycle = useMemo(() => {
     const raw = ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
     return raw;
@@ -112,7 +113,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS PRINCIPALES (Ahorro corregido y perfeccionado) =======
+  // === CÁLCULOS PRINCIPALES (Ahorro y Ciclo Personalizado) ==========
   // =================================================================
 
   const daysSinceStart = useMemo(() => {
@@ -120,23 +121,37 @@ export default function App() {
     const diffDays = constDiffMs / (1000 * 60 * 60 * 24);
     return Math.floor(diffDays);
   }, [now, startDateObj]);
+  
+  // Cálculo del Ciclo Personalizado
+  const customCycleInfo = useMemo(() => {
+    // Número de ciclos completos transcurridos
+    const currentCycleNumber = Math.floor(hoursSinceStartNow / cycleLength) + 1;
+    
+    // Horas dentro del ciclo actual (0 a cycleLength)
+    const hourInCurrentCycle = currentInCycle;
+    
+    return {
+        currentCycleNumber: Math.max(1, currentCycleNumber),
+        hourInCurrentCycle: hourInCurrentCycle,
+        cycleTypeLabel: `${Number(hoursLight).toFixed(1)} hs ON / ${Number(hoursDark).toFixed(1)} hs OFF`
+    };
+  }, [hoursSinceStartNow, cycleLength, hoursLight, hoursDark, currentInCycle]);
 
   const lightSaving = useMemo(() => {
-    // Días fraccionarios transcurridos para máxima precisión
     const daysElapsed = Math.max(0, hoursSinceStartNow / 24); 
     
-    // ESTÁNDAR FIJO DE COMPARACIÓN
-    const standardLightHoursPerDay = 12; // 12 horas de luz por cada 24 horas terrestres
+    // ESTÁNDAR FIJO DE COMPARACIÓN (12L/12D)
+    const standardLightHoursPerDay = 12; 
     
     const customLightHours = Number(hoursLight) || 0; 
     const customCycleLength = cycleLength; 
     
-    // CORRECCIÓN CLAVE: Calcula las HORAS DE LUZ REALES usadas en un DÍA TERRESTRE (24 horas)
+    // Horas de luz reales usadas en un DÍA TERRESTRE (24 horas)
     const customLightHoursPerDay = customCycleLength > 0 
       ? (customLightHours / customCycleLength) * 24
       : 0;
 
-    // Ahorro/Gasto por día (será negativo si el ciclo personalizado usa más luz por día)
+    // Ahorro/Gasto por día
     const savingPerHourPerDay = standardLightHoursPerDay - customLightHoursPerDay; 
     
     // Ahorro/Gasto Total acumulado
@@ -332,7 +347,7 @@ export default function App() {
                 <span className={`text-lg font-mono text-gray-800`}>{formatStartDate(startDateObj)}</span>
                 
                 <p className="font-semibold text-gray-900 flex items-center mt-3">
-                    Días de Cultivo: 
+                    Días de Cultivo (Terrestres): 
                     <span className={`text-4xl font-extrabold font-mono text-${PRIMARY_COLOR}-600 ml-2 leading-none`}>
                         {Math.max(0, daysSinceStart)}
                     </span>
@@ -340,7 +355,28 @@ export default function App() {
             </div>
             
             <div className="text-sm text-gray-600 space-y-4">
-              <p className="font-mono text-sm flex justify-between items-center pb-2 border-b border-gray-200">
+              
+              {/* === NUEVA MÉTRICA: CICLO PERSONALIZADO === */}
+              <div className="py-2 border-b border-gray-200 bg-blue-50 p-2 rounded-md">
+                <p className="font-semibold text-gray-900 text-sm mb-1">
+                    Progreso en el Ciclo Personalizado
+                </p>
+                <p className="font-mono text-sm text-gray-700">
+                    <strong className="text-2xl font-extrabold text-blue-700 leading-none">
+                        Día {customCycleInfo.currentCycleNumber}
+                    </strong>
+                    <span className="text-xs text-gray-500 ml-2">
+                         ({(customCycleInfo.hourInCurrentCycle || 0).toFixed(2)} / {cycleLength.toFixed(2)} hs)
+                    </span>
+                </p>
+                <p className="text-xs font-medium text-blue-600 mt-1">
+                    Ciclo: {customCycleInfo.cycleTypeLabel}
+                </p>
+              </div>
+              {/* ========================================= */}
+
+
+              <p className="font-mono text-sm flex justify-between items-center pb-2 border-b border-gray-200 pt-2">
                 <span className="text-gray-600">Hora Actual:</span> 
                 <span className={`text-xl font-bold text-${PRIMARY_COLOR}-600`}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </p>
@@ -371,7 +407,7 @@ export default function App() {
 
               {/* Horarios del Día Actual */}
               <div className="pt-2">
-                <h3 className="font-bold text-gray-800 text-sm mb-2">Horario de Hoy:</h3>
+                <h3 className="font-bold text-gray-800 text-sm mb-2">Horario de Hoy (24h Terrestres):</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div><span className="text-green-600">LUZ:</span> <strong className="text-gray-900">{lightScheduleToday.lightStart}</strong> a <strong className="text-gray-900">{lightScheduleToday.lightEnd}</strong></div>
                   <div><span className="text-indigo-600">OSCURIDAD:</span> <strong className="text-gray-900">{lightScheduleToday.darkStart}</strong> a <strong className="text-gray-900">{lightScheduleToday.darkEnd}</strong></div>
@@ -381,7 +417,7 @@ export default function App() {
 
             </div>
 
-            {/* SECCIÓN DE AHORRO (CÁLCULO CORREGIDO) */}
+            {/* SECCIÓN DE AHORRO */}
             <div className="mt-6 pt-5 border-t border-gray-200">
               <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético vs Ciclo Común (12L/12D)</h3>
               
@@ -423,7 +459,7 @@ export default function App() {
         <section className={`${CARD_CLASS} p-0 overflow-hidden`}>
           <div className={`flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50`}>
             <h2 className={`text-xl font-bold text-gray-800`}>
-              Visualización por Ciclos (Día × Hora)
+              Visualización por Ciclos (Día Terrestre × Hora)
             </h2>
             <div className="text-xs text-gray-500">
               {durationDays} días de monitoreo
