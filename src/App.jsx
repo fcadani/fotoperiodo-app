@@ -48,6 +48,11 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -160,13 +165,28 @@ export default function App() {
     return inCycle < Number(hoursLight);
   }
   
-  // ---- Balance Energético (vs 12L/12D) ----
+  // ---- Balance Energético (vs 12L/12D) - CORREGIDO POR DURACIÓN TOTAL ----
   const energyBalance = useMemo(() => {
-    const daysCultivo = Math.max(0, Math.floor(hoursSinceStartNow / 24));
-    const hoursDifference = Number(hoursLight) - 12; // Diferencia con ciclo 12/12
-    const totalBalance = hoursDifference * daysCultivo;
+    if (hoursSinceStartNow < 0) return 0; // No hay balance si la hora de inicio es futura
+
+    const hoursLightCustom = Number(hoursLight);
+    const cycleLenCustom = cycleLength;
+
+    // Horas de luz consumidas por el ciclo personalizado hasta ahora
+    const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
+
+    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
+    const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
+
+    // Balance: Común - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
+    const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
-  }, [hoursLight, hoursSinceStartNow]);
+  }, [hoursLight, hoursSinceStartNow, cycleLength]);
+  
+  // ---- Días Superciclo (Duración equivalente en ciclos de 24h) ----
+  const superCycleDays = useMemo(() => {
+    return hoursSinceStartNow / 24;
+  }, [hoursSinceStartNow]);
   
   // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
@@ -244,13 +264,11 @@ export default function App() {
 
     // Calculate end time
     if (lightStartHourToday !== null) {
-      // In a 24h day, the light period must end before it wraps.
       let tempLightEnd = (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday !== 0) ? darkStartHourToday : lightStartHourToday + lightHours;
       if (tempLightEnd > 24) tempLightEnd = 24; 
       lightEndHourToday = tempLightEnd;
     }
     if (darkStartHourToday !== null) {
-      // In a 24h day, the dark period must end before it wraps.
       let tempDarkEnd = (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday !== 0) ? lightStartHourToday : darkStartHourToday + darkHours;
       if (tempDarkEnd > 24) tempDarkEnd = 24; 
       darkEndHourToday = tempDarkEnd;
@@ -420,18 +438,29 @@ export default function App() {
                 <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
               </div>
 
+              {/* Días de Cultivo y Superciclo juntos */}
               <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Días de cultivo:</div>
-                <div className="text-xl font-extrabold text-white">{Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}</div>
+                <div className="text-xs text-gray-400">Días transcurridos (Días de Cultivo):</div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="font-extrabold text-xl text-white">
+                        {Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xs text-gray-400">VS Días Superciclo (24h):</div>
+                        <div className="font-mono text-base text-indigo-300">
+                            {superCycleDays.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
               </div>
 
               {/* BALANCE ENERGÉTICO */}
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12L/12D):</div>
                 <div className={`font-extrabold text-xl ${balanceColor}`}>
-                  {balanceIcon} {Math.abs(energyBalance).toFixed(1)} hrs
+                  {balanceIcon} {Math.abs(energyBalance).toFixed(2)} hrs
                 </div>
-                <div className="text-xs text-gray-400">{balanceText} luz acumulado.</div>
+                <div className="text-xs text-gray-400">{balanceText} luz acumulado desde el inicio.</div>
               </div>
               {/* FIN BALANCE ENERGÉTICO */}
 
