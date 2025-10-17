@@ -18,7 +18,7 @@ Características incluidas:
 Notas técnicas:
 - Algoritmo: para cada celda (día, hora) calculamos "hoursSinceStart = (dayIndex * 24) + hour + fractionalStartOffset" y luego
   `hoursInCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength`. Si hoursInCycle < hoursLight entonces es LUZ.
-- Si querés soporte de autenticación y sincronización, podés conectar Supabase/Firebase en la etapa 2.
+- Si querés soporte de autenticación y sincronización, podés conectar Supabase/Firebase en la etapa 2. */
 
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -149,24 +149,32 @@ export default function App() {
   }, [daysSinceStart, hoursLight]);
 
 
-  // Horarios de Luz/Oscuridad del Día Actual
+  /**
+   * NUEVA LÓGICA: Calcula los horarios exactos de encendido/apagado para el día actual
+   * Basado en la hora fraccional de inicio y la longitud del ciclo.
+   */
   const lightScheduleToday = useMemo(() => {
+    // Horas absolutas desde el inicio (en el punto de inicio del día actual)
     const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
     
     let lightStartHour = -1;
     let darkStartHour = -1;
     
+    // Iteramos a través de las 24 horas del día actual (0 a 23)
     for (let h = 0; h < 24; h++) {
       const hoursAbsolute = currentDayStartHoursSinceStart + h;
       const isLight = isLightAtAbsoluteHours(hoursAbsolute);
       const isPrevLight = isLightAtAbsoluteHours(hoursAbsolute - 1);
 
+      // El ciclo cambia a luz (L -> D)
       if (isLight && !isPrevLight && lightStartHour === -1) lightStartHour = h;
+      // El ciclo cambia a oscuridad (D -> L)
       if (!isLight && isPrevLight && darkStartHour === -1) darkStartHour = h;
     }
 
     const formatHour = (h) => (h % 24).toString().padStart(2, '0') + ':00';
     
+    // Casos extremos
     if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', isLight: false, lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
     if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', isLight: true, lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
 
@@ -176,20 +184,24 @@ export default function App() {
     let ds = 'N/A';
     let de = 'N/A';
 
+    // Cálculo de inicio/fin de luz
     if (lightStartHour !== -1) {
         ls = formatHour(lightStartHour);
         le = formatHour(lightStartHour + Number(hoursLight));
     } else {
+        // La luz comenzó en el día anterior
         if (darkStartHour !== -1) {
              le = formatHour(darkStartHour);
              ls = formatHour(darkStartHour - Number(hoursLight));
         }
     }
     
+    // Cálculo de inicio/fin de oscuridad
     if (darkStartHour !== -1) {
         ds = formatHour(darkStartHour);
         de = formatHour(darkStartHour + Number(hoursDark));
     } else {
+        // La oscuridad comenzó en el día anterior
         if (lightStartHour !== -1) {
              de = formatHour(lightStartHour);
              ds = formatHour(lightStartHour - Number(hoursDark));
@@ -283,6 +295,7 @@ export default function App() {
   const PRIMARY_COLOR = 'indigo'; 
   const ACCENT_COLOR = 'teal'; 
 
+  // Notar que se usan backticks (`) para clases dinámicas como en la línea 562 del error
   const INPUT_CLASS = `w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-800 
                        focus:ring-2 focus:ring-${PRIMARY_COLOR}-500 focus:border-${PRIMARY_COLOR}-500 
                        transition duration-200 ease-in-out shadow-sm`;
@@ -409,7 +422,7 @@ export default function App() {
                   </p>
               </div>
 
-              {/* Horarios del Día Actual */}
+              {/* Horarios del Día Actual (NUEVA IMPLEMENTACIÓN) */}
               <div className="pt-3 border-t border-gray-100">
                 <h3 className="font-bold text-gray-900 mb-2">Horario de Hoy:</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
