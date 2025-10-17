@@ -301,12 +301,12 @@ export default function App() {
       const minutes = totalMinutes % 60;
       
       const d = new Date(startDateObj.getTime());
-      // Ajustar la fecha base al inicio del día de 24h actual
+      // Ajustar la fecha base al inicio del día de 24h actual (día de calendario)
       d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (dayIndex * 24 + hours) * 3600000 + minutes * 60000);
+      d.setTime(d.getTime() + (dayIndex * 24) * 3600000 + hours * 3600000 + minutes * 60000);
       
       // Devolver la fecha y hora completa
-      return d.toLocaleString([], { 
+      return d.toLocaleDateString([], { 
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
@@ -535,26 +535,28 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
-              {/* ** MODIFICACIÓN UI/JSX ** */}
+              {/* ** BLOQUE MODIFICADO DE HORARIO ** */}
               <div>
                 <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-1 gap-2 text-white mt-1">
-                  <div className="border border-yellow-800/50 p-2 rounded-lg bg-yellow-900/10">
+                <div className="text-sm grid grid-cols-1 gap-3 text-white mt-2">
+                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-yellow-900/10 shadow-inner">
                     <span className="text-yellow-400 font-semibold block mb-1 text-base">ON (Inicio Luz):</span> 
-                    <div className="font-mono">{lightScheduleToday.lightStart}</div>
-                    <span className="text-yellow-400 font-semibold block mt-2 text-base">OFF (Fin Luz):</span> 
-                    <div className="font-mono">{lightScheduleToday.lightEnd}</div>
+                    <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
+                    
+                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">OFF (Fin Luz):</span> 
+                    <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
                   </div>
-                  <div className="border border-indigo-800/50 p-2 rounded-lg bg-indigo-900/10">
+                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-indigo-900/10 shadow-inner">
                     <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
-                    <div className="font-mono">{lightScheduleToday.darkStart}</div>
-                    <span className="text-indigo-400 font-semibold block mt-2 text-base">ON (Fin Oscuridad):</span> 
-                    <div className="font-mono">{lightScheduleToday.darkEnd}</div>
+                    <div className="font-mono text-lg">{lightScheduleToday.darkStart}</div>
+                    
+                    <span className="text-emerald-400 font-semibold block mt-3 mb-1 text-base">ON (Fin Oscuridad):</span> 
+                    <div className="font-mono text-lg">{lightScheduleToday.darkEnd}</div>
                   </div>
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
-              {/* ** FIN MODIFICACIÓN UI/JSX ** */}
+              {/* ** FIN BLOQUE MODIFICADO ** */}
             </div>
           </aside>
 
