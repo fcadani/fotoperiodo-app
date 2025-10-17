@@ -264,31 +264,30 @@ export default function App() {
 
 
   // =================================================================
-  // === CLASES TAILWIND CSS (ALTO CONTRASTE / SIN BORDES) ============
+  // === CLASES TAILWIND CSS (SIN TEMPLATE LITERALS) ============
   // =================================================================
   
-  // Usamos los nombres de color literales para que Tailwind CSS pueda detectarlos
-  // sin error de compilación.
-
-  const INPUT_CLASS = `w-full p-2.5 border-b border-gray-300 rounded-none bg-white text-gray-800 
-                       focus:ring-0 focus:border-b-2 focus:border-blue-500 transition duration-200 shadow-none text-base`;
+  // Se usan comillas simples y una sola línea para evitar errores de linter/editor
+  const INPUT_CLASS = 'w-full p-2.5 border-b border-gray-300 rounded-none bg-white text-gray-800 focus:ring-0 focus:border-b-2 focus:border-blue-500 transition duration-200 shadow-none text-base';
   
-  const CARD_CLASS = `p-6 bg-white transition duration-300`;
+  const CARD_CLASS = 'p-6 bg-white transition duration-300';
 
-  const TITLE_CLASS = `text-2xl font-extrabold mb-4 pb-3 border-b border-gray-200 text-gray-900`;
+  const TITLE_CLASS = 'text-2xl font-extrabold mb-4 pb-3 border-b border-gray-200 text-gray-900';
 
 
   const formatStartDate = (dateObj) => {
     return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
-  return (
+  // EL ERROR DE ROJO EMPIEZA AQUÍ (LÍNEA ~282)
+  return ( 
     <div className="min-h-screen bg-white text-gray-900 font-sans flex justify-center w-full">
       
       <div className="max-w-4xl w-full p-4 sm:p-8">
         
         <header className="mb-8 pt-4 pb-2 text-center">
-          <h1 className={`text-4xl font-extrabold tracking-tight text-gray-900`}>
+          {/* CORRECCIÓN: Se cambian las comillas graves por comillas simples */}
+          <h1 className={'text-4xl font-extrabold tracking-tight text-gray-900'}>
             Fotoperiodo | Módulo de Control
           </h1>
           <p className="text-base text-gray-500 mt-2">
@@ -346,11 +345,11 @@ export default function App() {
             {/* Días transcurridos y fecha de inicio */}
             <div className="text-base text-gray-600 mb-4 pb-4 border-b border-gray-200">
                 <p className="font-semibold text-gray-900 text-sm mb-1">Inicio del Ciclo:</p>
-                <span className={`text-lg font-mono text-gray-800`}>{formatStartDate(startDateObj)}</span>
+                {/* CORRECCIÓN: Se cambian las comillas graves por comillas simples */}
+                <span className={'text-lg font-mono text-gray-800'}>{formatStartDate(startDateObj)}</span>
                 
                 <p className="font-semibold text-gray-900 flex items-center mt-3">
                     Días de Cultivo (Terrestres): 
-                    {/* Clase literal 'text-blue-600' */}
                     <span className={'text-4xl font-extrabold font-mono text-blue-600 ml-2 leading-none'}>
                         {Math.max(0, daysSinceStart)}
                     </span>
@@ -381,24 +380,25 @@ export default function App() {
 
               <p className="font-mono text-sm flex justify-between items-center pb-2 border-b border-gray-200 pt-2">
                 <span className="text-gray-600">Hora Actual:</span> 
-                {/* Clase literal 'text-blue-600' */}
                 <span className={'text-xl font-bold text-blue-600'}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </p>
               
               {/* Indicador de Estado LUZ/OSCURIDAD */}
               <div className="flex justify-between items-center py-2 border-b border-gray-200">
                   <span className="font-medium text-sm text-gray-600">Estado Actual:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${isNowLight 
-                    ? `bg-green-100 text-green-700` 
-                    : `bg-indigo-100 text-indigo-700`}`}>
+                  {/* Se usa concatenación simple para evitar errores de sintaxis anidada */}
+                  <span className={'px-3 py-1 rounded-full text-xs font-bold ' + 
+                    (isNowLight ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700')}>
                     {isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}
                   </span>
               </div>
               
               {/* Progreso (Próximo Cambio) */}
-              <div className={`font-semibold py-2 border-b border-gray-200`}>
+              {/* CORRECCIÓN: Se cambian las comillas graves por comillas simples */}
+              <div className={'font-semibold py-2 border-b border-gray-200'}>
                   <p className="text-xs text-gray-500 mb-1">Próximo Evento ({nextChangeEvent.action}):</p>
-                  <span className={`text-gray-800 text-xl font-bold font-mono`}>
+                  {/* CORRECCIÓN: Se cambian las comillas graves por comillas simples */}
+                  <span className={'text-gray-800 text-xl font-bold font-mono'}>
                     {nextChangeEvent.time}
                   </span>
                   <span className="text-gray-500 text-sm ml-1">
@@ -423,15 +423,14 @@ export default function App() {
 
             {/* SECCIÓN DE AHORRO */}
             <div className="mt-6 pt-5 border-t border-gray-200">
-              <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético vs Ciclo Común (12L/12D)</h3>
+              <h3 className={'text-sm font-bold text-gray-800 mb-2'}>Balance Energético vs Ciclo Común (12L/12D)</h3>
               
               <div className="p-3 bg-gray-50">
                 
                 {/* Muestra la diferencia diaria (la clave de la corrección) */}
                 <p className="text-xs font-medium text-gray-500">Diferencia Diaria vs 12L/12D:</p>
                 <p className="text-xl font-extrabold mt-1 mb-3 font-mono">
-                    {/* Clase literal 'text-green-600' */}
-                    <span className={`${lightSaving.savingPerHourPerDay > 0 ? 'text-green-600' : (lightSaving.savingPerHourPerDay < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                    <span className={lightSaving.savingPerHourPerDay > 0 ? 'text-green-600' : (lightSaving.savingPerHourPerDay < 0 ? 'text-red-600' : 'text-gray-500')}>
                         {lightSaving.savingPerHourPerDay > 0 ? '+' : ''}{(lightSaving.savingPerHourPerDay || 0).toFixed(2)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas/día</span>
@@ -440,8 +439,7 @@ export default function App() {
 
                 <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas/Gastadas:</p>
                 <p className="text-3xl font-extrabold mt-1 font-mono">
-                    {/* Clase literal 'text-green-600' */}
-                    <span className={`${lightSaving.totalSaving > 0 ? 'text-green-600' : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                    <span className={lightSaving.totalSaving > 0 ? 'text-green-600' : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}>
                         {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(2)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas</span>
@@ -463,8 +461,8 @@ export default function App() {
 
         {/* Calendario */}
         <section className={`${CARD_CLASS} p-0 overflow-hidden`}>
-          <div className={`flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50`}>
-            <h2 className={`text-xl font-bold text-gray-800`}>
+          <div className={'flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50'}>
+            <h2 className={'text-xl font-bold text-gray-800'}>
               Visualización por Ciclos (Día Terrestre × Hora)
             </h2>
             <div className="text-xs text-gray-500">
@@ -478,7 +476,7 @@ export default function App() {
               <thead className="bg-white sticky top-0 z-10 border-b border-gray-200">
                 <tr>
                   {/* ANCHO FIJO PARA COLUMNA DÍA */}
-                  <th className={`p-1 border-r border-gray-200 text-left w-12 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-white`}>Día #</th>
+                  <th className={'p-1 border-r border-gray-200 text-left w-12 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-white'}>Día #</th>
                   {Array.from({length:24}).map((_,h) => (
                     {/* FUENTE PEQUEÑA Y PADDING REDUCIDO PARA HORAS */}
                     <th key={h} className="p-1 text-center text-[0.6rem] font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
@@ -497,7 +495,7 @@ export default function App() {
 
                       return (
                         {/* PADDING MÍNIMO PARA LAS CELDAS */}
-                        <td key={h} className={`p-px text-center align-middle`}>
+                        <td key={h} className={'p-px text-center align-middle'}>
                           {/* ALTURA MÁS BAJA Y FUENTE MINÚSCULA */}
                           <div className={`w-full h-4 flex items-center justify-center text-[0.6rem] font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-1 ring-red-500 shadow-md z-20' : ''} transition-all duration-100 ease-in-out font-mono`}>
                             {isLight ? 'L' : 'D'}
