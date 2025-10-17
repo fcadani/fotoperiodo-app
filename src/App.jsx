@@ -27,9 +27,6 @@ export default function App() {
   const [hoursDark, setHoursDark] = useState(14);
   const [durationDays, setDurationDays] = useState(60);
   
-  // ESTADOS DE COMPARACIÓN FIJADOS: standardHoursLight = 12, standardHoursDark = 12
-  // Se eliminan los estados de comparación configurables.
-  
   const [now, setNow] = useState(new Date());
 
   // load settings
@@ -39,12 +36,9 @@ export default function App() {
       if (raw) {
         const obj = JSON.parse(raw);
         if (obj.startDate) setStartDate(obj.startDate);
-        // Usar Number(value) || defaultValue para evitar NaN/undefined
         if (obj.hoursLight !== undefined) setHoursLight(Number(obj.hoursLight) || 0);
         if (obj.hoursDark !== undefined) setHoursDark(Number(obj.hoursDark) || 0);
         if (obj.durationDays !== undefined) setDurationDays(Number(obj.durationDays) || 1);
-        
-        // (Líneas de carga de standardHoursLight/Dark eliminadas)
       }
     } catch (e) {
       console.warn("No se pudieron cargar los ajustes:", e);
@@ -53,10 +47,9 @@ export default function App() {
 
   // autosave
   useEffect(() => {
-    // Objeto de guardado simplificado
     const obj = { startDate, hoursLight, hoursDark, durationDays }; 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  }, [startDate, hoursLight, hoursDark, durationDays]); // <-- Dependencias simplificadas
+  }, [startDate, hoursLight, hoursDark, durationDays]); 
 
   // tick every 30s so "current" updates
   useEffect(() => {
@@ -116,7 +109,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS PRINCIPALES (Ahorro fijo 12L/12D) ==================
+  // === CÁLCULOS PRINCIPALES (Ahorro corregido) ======================
   // =================================================================
 
   const daysSinceStart = useMemo(() => {
@@ -126,7 +119,8 @@ export default function App() {
   }, [now, startDateObj]);
 
   const lightSaving = useMemo(() => {
-    const daysElapsed = Math.max(0, daysSinceStart);
+    // CORRECCIÓN CLAVE: Usamos los días fraccionarios para una mayor precisión
+    const daysElapsed = Math.max(0, hoursSinceStartNow / 24); 
     
     // ESTÁNDAR FIJO DE COMPARACIÓN (12L/12D)
     const standardLightHours = 12; 
@@ -134,17 +128,17 @@ export default function App() {
     // Horas de luz del ciclo personalizado
     const customLightHours = Number(hoursLight) || 0; 
     
-    // Ahorro/Gasto por día
+    // Ahorro/Gasto por día (será negativo si el ciclo personalizado usa más luz)
     const savingPerHour = standardLightHours - customLightHours; 
     
-    // Ahorro/Gasto Total
+    // Ahorro/Gasto Total. Usa días fraccionarios para incluir el día parcial.
     const rawTotalSaving = savingPerHour * daysElapsed;
 
-    // CORRECCIÓN: Asegura que totalSaving es un número (0 si es NaN)
+    // Asegura que totalSaving es un número (0 si es NaN)
     const totalSaving = rawTotalSaving || 0; 
 
     return { totalSaving: totalSaving };
-  }, [daysSinceStart, hoursLight]); // standardHoursLight eliminado de dependencias
+  }, [hoursSinceStartNow, hoursLight]); // Dependencia hoursSinceStartNow actualizada
 
 
   const lightScheduleToday = useMemo(() => {
@@ -224,7 +218,7 @@ export default function App() {
         nextState = 'Luz';
     }
 
-    // CORRECCIÓN: Asegura que hoursToNextChange es un número válido y no negativo
+    // Asegura que hoursToNextChange es un número válido y no negativo
     const hoursToNextChange = Math.max(0, rawHoursToNextChange || 0);
     
     const diffMs = hoursToNextChange * (1000 * 60 * 60);
@@ -320,7 +314,6 @@ export default function App() {
               </div>
             </div>
             
-            {/* Sección de comparación eliminada para simplificar la interfaz */}
           </div>
 
           {/* Estado actual y Ahorro */}
@@ -392,7 +385,7 @@ export default function App() {
                 <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas:</p>
                 <p className="text-3xl font-extrabold mt-1 font-mono">
                     <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
-                        {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(1)} 
+                        {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(2)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas</span>
                 </p>
