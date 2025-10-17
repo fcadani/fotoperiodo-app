@@ -73,7 +73,13 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+// Se agregó Zap para el ícono de Balance Energético
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
@@ -116,6 +122,7 @@ export default function App() {
     const obj = safeParseJSON(raw, null);
     if (!obj) return;
     if (obj.startDate) setStartDate(String(obj.startDate));
+    // Asegurarse de que setHoursLight y setHoursDark sean correctos
     if (Number.isFinite(Number(obj.hoursLight))) setHoursLight(Number(obj.hoursLight));
     if (Number.isFinite(Number(obj.hoursDark))) setHoursDark(Number(obj.hoursDark));
     if (Number.isFinite(Number(obj.durationDays))) setDurationDays(Number(obj.durationDays));
@@ -240,16 +247,16 @@ export default function App() {
       return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
-    // 1. Determinar el inicio del ciclo actual (CORREGIDO)
+    // 1. Determinar el inicio del ciclo actual (Corrección para evitar ReferenceError)
     const cycleIndex = Math.floor(hoursSinceStartNow / cycleLength);
-    const cycleStartAbsoluteHours = cycleIndex * cycleLength; // Definición correcta
+    const cycleStartAbsoluteHours = cycleIndex * cycleLength; 
     
     // 2. Determinar la hora de encendido (Luz) y apagado (Oscuridad) ABSOLUTA
     let lightStartAbsoluteHours = -1;
     let darkStartAbsoluteHours = -1;
     
     // Si la luz empieza al inicio del ciclo (0), el dark start es lightHours
-    if (isLightAtAbsoluteHours(cycleStartAbsoluteHours)) {
+    if (isLightAtAbsoluteHours(cycleStartAbsoluteHours + 0.01)) { // +0.01 para asegurar que no caiga justo en la transición del ciclo
         lightStartAbsoluteHours = cycleStartAbsoluteHours;
         darkStartAbsoluteHours = cycleStartAbsoluteHours + lightHours;
     } else {
@@ -264,7 +271,7 @@ export default function App() {
         
         // Crear una nueva fecha basada en startDateObj
         const date = new Date(startDateObj.getTime());
-        // Sumar las horas absolutas desde el inicio
+        // Sumar las horas absolutas desde el inicio, redondeando para evitar minutos fraccionales extraños
         date.setTime(date.getTime() + Math.round(absoluteHoursSinceStart * 3600000));
 
         // Formato HH:mm
@@ -471,7 +478,7 @@ export default function App() {
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action}):</div>
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
-                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNextChange?.toFixed(2) ?? '--'} hrs</div>
+                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNextChange.toFixed(2)} hrs</div>
               </div>
 
               <div>
@@ -504,9 +511,11 @@ export default function App() {
                 </thead>
                 <tbody>
                   {calendar.map((row, d) => (
+                    // Corregido: d === currentDayIndex -> d === currentDayIndex24h
                     <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
                       <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
                       {row.map((isLight, h) => {
+                        // Corregido: d === currentDayIndex -> d === currentDayIndex24h
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
