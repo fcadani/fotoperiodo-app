@@ -63,6 +63,11 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -218,15 +223,10 @@ export default function App() {
     return rows;
   }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
 
-  // ---- Determine today's precise schedule (encendido/apagado) ----
+  // ---- Determine today's precise schedule (basado en el ciclo actual) ----
   const lightScheduleToday = useMemo(() => {
-    const dayIndex = currentDayIndex24h; 
-    const dayStartAbsoluteHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
     const lightHours = Number(hoursLight);
     const darkHours = Number(hoursDark);
-
-    let lightStartHourToday = null;
-    let darkStartHourToday = null;
 
     if (lightHours === 0) {
       return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
@@ -235,76 +235,54 @@ export default function App() {
       return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
-    const precision = 1 / 60; // 1 minuto
+    // 1. Determinar el inicio del ciclo actual
+    const cycleIndex = Math.floor(hoursSinceStartNow / cycleLength);
+    const cycleStartHoursSinceStart = cycleIndex * cycleLength;
+
+    // 2. Determinar la hora de encendido (Luz) y apagado (Oscuridad) ABSOLUTA
+    let lightStartAbsoluteHours = -1;
+    let darkStartAbsoluteHours = -1;
     
-    const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart);
-    
-    if (isLightAtDayStart) {
-        lightStartHourToday = 0;
+    // Si la luz empieza al inicio del ciclo (0), el dark start es lightHours
+    if (isLightAtAbsoluteHours(cycleStartHoursSinceStart)) {
+        lightStartAbsoluteHours = cycleStartHoursSinceStart;
+        darkStartAbsoluteHours = cycleStartAbsoluteHours + lightHours;
     } else {
-        darkStartHourToday = 0;
+        // Si la oscuridad empieza al inicio del ciclo (0), el light start es darkHours
+        darkStartAbsoluteHours = cycleStartHoursSinceStart;
+        lightStartAbsoluteHours = cycleStartAbsoluteHours + darkHours;
     }
 
-    // Buscar la primera transición
-    for (let h = 0; h < 24; h += precision) {
-      const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
-      const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
-      const wasLightBefore = isLightAtAbsoluteHours(currentAbsoluteHour - precision);
+    // 3. Formatear la hora absoluta a la hora local de 24h (HH:mm)
+    const formatAbsoluteHourToLocalTime = (absoluteHoursSinceStart) => {
+        if (absoluteHoursSinceStart < 0) return 'N/A';
+        
+        // Crear una nueva fecha basada en startDateObj
+        const date = new Date(startDateObj.getTime());
+        // Sumar las horas absolutas desde el inicio
+        date.setTime(date.getTime() + Math.round(absoluteHoursSinceStart * 3600000));
 
-      if (isLight && !wasLightBefore && lightStartHourToday === null) {
-        lightStartHourToday = h;
-      } 
-      if (!isLight && wasLightBefore && darkStartHourToday === null) {
-        darkStartHourToday = h;
-      }
-
-      if (lightStartHourToday !== null && darkStartHourToday !== null && 
-          (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
-    }
-
-    const formatTime = (h) => {
-      if (h === null) return 'N/A';
-      const totalMinutes = Math.round(h * 60);
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      
-      const d = new Date(startDateObj.getTime());
-      d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (dayIndex * 24 + hours) * 3600000 + minutes * 60000);
-      
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // Formato HH:mm
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    let lightEndHourToday = null;
-    let darkEndHourToday = null;
-
-    // Calcular hora de fin
-    if (lightStartHourToday !== null) {
-      let tempLightEnd = lightStartHourToday + lightHours;
-      if (darkStartHourToday !== null && darkStartHourToday !== 0 && lightStartHourToday < darkStartHourToday) {
-          tempLightEnd = darkStartHourToday;
-      }
-      if (tempLightEnd > 24) tempLightEnd = 24; 
-      lightEndHourToday = tempLightEnd;
-    }
+    const lightStartLocal = formatAbsoluteHourToLocalTime(lightStartAbsoluteHours);
+    const lightEndLocal = formatAbsoluteHourToLocalTime(lightStartAbsoluteHours + lightHours);
     
-    if (darkStartHourToday !== null) {
-      let tempDarkEnd = darkStartHourToday + darkHours;
-      if (lightStartHourToday !== null && lightStartHourToday !== 0 && darkStartHourToday < lightStartHourToday) {
-          tempDarkEnd = lightStartHourToday;
-      }
-      if (tempDarkEnd > 24) tempDarkEnd = 24; 
-      darkEndHourToday = tempDarkEnd;
-    }
-
+    const darkStartLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours);
+    const darkEndLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours + darkHours);
+    
+    // Los horarios deben estar dentro del mismo ciclo, así que no es necesario el chequeo de 24h.
+    // Simplemente se muestran los puntos de inicio y fin del ciclo en curso.
+    
     return {
-      status: null,
-      lightStart: formatTime(lightStartHourToday),
-      lightEnd: formatTime(lightEndHourToday),
-      darkStart: formatTime(darkStartHourToday),
-      darkEnd: formatTime(darkEndHourToday),
+      status: `Horario del ciclo actual (${cycleLength.toFixed(1)}h)`,
+      lightStart: lightStartLocal,
+      lightEnd: lightEndLocal,
+      darkStart: darkStartLocal,
+      darkEnd: darkEndLocal,
     };
-  }, [currentDayIndex24h, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
+  }, [hoursSinceStartNow, hoursLight, hoursDark, cycleLength, startDateObj]);
 
 
   // ---- next change event ----
@@ -495,7 +473,7 @@ export default function App() {
               </div>
 
               <div>
-                <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
+                <div className="text-xs text-gray-400">Horario **HOY** (Ciclo {cycleIndex + 1} de {cycleLength.toFixed(1)}h):</div>
                 <div className="text-sm grid grid-cols-2 gap-1 text-white">
                   <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
                   <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
