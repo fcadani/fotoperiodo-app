@@ -1,10 +1,17 @@
-import { StrictMode } from 'react'
+import React from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import './index.css' // Importación CLAVE del CSS de Tailwind
+import App from './App.jsx' // O './fotoperiodo_app.jsx' si ese es el nombre del archivo
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Asegúrate de que este 'root' existe en tu index.html
+const container = document.getElementById('root');
+const root = createRoot(container);
+
+root.render(
+  <React.StrictMode>
+    {/* Aquí es donde se carga el componente principal */}
+    <App /> 
+  </React.StrictMode>
+);
+
+

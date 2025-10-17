@@ -123,7 +123,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS SOLICITADOS ========================================
+  // === CÁLCULOS PRINCIPALES ========================================
   // =================================================================
 
   // Días transcurridos (Días de Cultivo)
@@ -133,16 +133,12 @@ export default function App() {
     return Math.floor(diffDays);
   }, [now, startDateObj]);
 
-  // 💡 NUEVO CÁLCULO: Ahorro de Horas de Luz
+  // Ahorro de Horas de Luz
   const lightSaving = useMemo(() => {
     const daysElapsed = Math.max(0, daysSinceStart);
-    const standardLightHours = 12; // Base: 12 horas de luz en un ciclo 12/12 (24h)
+    const standardLightHours = 12; 
     
-    // Ahorro/Gasto de horas de luz en comparación con 12h estándar
     const savingPerHour = standardLightHours - Number(hoursLight); 
-    
-    // El ahorro se aplica solo por cada ciclo de 24h
-    // Usaremos el día de cultivo como referencia de 24h
     const totalSaving = savingPerHour * daysElapsed;
 
     return {
@@ -153,7 +149,7 @@ export default function App() {
   }, [daysSinceStart, hoursLight]);
 
 
-  // Horarios de Luz/Oscuridad del Día Actual (Mantenido)
+  // Horarios de Luz/Oscuridad del Día Actual
   const lightScheduleToday = useMemo(() => {
     const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
     
@@ -210,7 +206,7 @@ export default function App() {
     
   }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark]);
 
-  // Próximo Cambio de Estado (Mantenido)
+  // Próximo Cambio de Estado
   const nextChangeEvent = useMemo(() => {
     let hoursToNextChange;
     let nextState;
@@ -280,15 +276,28 @@ export default function App() {
   }
 
   // =================================================================
-  // === CLASES TAILWIND CSS (Mantenidas) ============================
+  // === CLASES TAILWIND CSS MEJORADAS (Estética Final) ==============
   // =================================================================
 
-  const INPUT_CLASS = "w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out my-2";
-  const BUTTON_BASE_CLASS = "px-4 py-2 rounded-lg font-medium shadow-md transition duration-200 ease-in-out";
-  const PRIMARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-indigo-600 text-white hover:bg-indigo-700`;
-  const SECONDARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-emerald-500 text-white hover:bg-emerald-600`;
-  const TERTIARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-gray-100 text-gray-700 hover:bg-gray-200`;
-  const CARD_CLASS = "p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition duration-300";
+  // Ajustado a un color primario más vibrante (teal/cyan)
+  const PRIMARY_COLOR = 'indigo'; 
+  const ACCENT_COLOR = 'teal'; 
+
+  const INPUT_CLASS = `w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-800 
+                       focus:ring-2 focus:ring-${PRIMARY_COLOR}-500 focus:border-${PRIMARY_COLOR}-500 
+                       transition duration-200 ease-in-out shadow-sm`;
+  
+  const BUTTON_BASE_CLASS = "px-5 py-2.5 rounded-full font-semibold shadow-md transition duration-200 ease-in-out text-sm";
+  
+  const PRIMARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-${PRIMARY_COLOR}-600 text-white hover:bg-${PRIMARY_COLOR}-700 
+                                shadow-${PRIMARY_COLOR}-500/50`;
+  
+  const SECONDARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-${ACCENT_COLOR}-500 text-white hover:bg-${ACCENT_COLOR}-600 
+                                  shadow-${ACCENT_COLOR}-500/50`;
+  
+  const TERTIARY_BUTTON_CLASS = `${BUTTON_BASE_CLASS} bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-none border border-gray-200`;
+  
+  const CARD_CLASS = "p-7 bg-white rounded-3xl shadow-2xl shadow-gray-200/50 transition duration-500 hover:shadow-3xl";
 
   // Función de formato para la fecha de inicio
   const formatStartDate = (dateObj) => {
@@ -296,20 +305,29 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 p-6 font-sans">
+    // Fondo más profesional y fuente estándar
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-8 font-sans">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-4xl font-extrabold text-indigo-700 tracking-tight">Fotoperiodo 💡</h1>
-          <p className="text-md text-gray-500 mt-1">Configuración de ciclos de luz/oscuridad para cultivos, con visualización de calendario.</p>
+        <header className="mb-10 text-center">
+          <h1 className={`text-5xl font-extrabold text-${PRIMARY_COLOR}-700 tracking-tight`}>
+            Fotoperiodo 💡
+          </h1>
+          <p className="text-lg text-gray-600 mt-2">
+            Gestión de ciclos de luz/oscuridad y eficiencia de cultivo.
+          </p>
         </header>
 
-        <section className="grid lg:grid-cols-3 gap-6 mb-8">
+        <section className="grid lg:grid-cols-3 gap-8 mb-10">
           
           {/* Configuración */}
           <div className={`${CARD_CLASS} lg:col-span-2`}>
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2 text-indigo-600">Configuración del Ciclo</h2>
+            <h2 className={`text-2xl font-bold mb-5 border-b pb-3 text-${PRIMARY_COLOR}-600`}>
+              Configuración del Ciclo
+            </h2>
             
-            <label className="block text-sm font-medium text-gray-700">Fecha y hora de inicio</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha y hora de inicio
+            </label>
             <input
               type="datetime-local"
               value={startDate}
@@ -317,113 +335,114 @@ export default function App() {
               className={INPUT_CLASS}
             />
 
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-3 gap-5 mt-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Horas luz (L)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horas luz (L)</label>
                 <input type="number" min="0" step="0.5" value={hoursLight}
                   onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
                   className={INPUT_CLASS} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Horas oscuridad (D)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horas oscuridad (D)</label>
                 <input type="number" min="0" step="0.5" value={hoursDark}
                   onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
                   className={INPUT_CLASS} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Duración (días)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duración (días)</label>
                 <input type="number" min="1" max="9999" value={durationDays}
                   onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
                   className={INPUT_CLASS} />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-4 pt-4 border-t">
+            <div className="flex flex-wrap gap-3 mt-6 pt-5 border-t border-gray-200">
               <button onClick={handleExport} className={PRIMARY_BUTTON_CLASS}>Exportar JSON</button>
               <label className={SECONDARY_BUTTON_CLASS + " cursor-pointer"}>
                 Importar JSON
                 <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
               </label>
-              <button onClick={resetDefaults} className={TERTIARY_BUTTON_CLASS}>Restablecer</button>
+              <button onClick={resetDefaults} className={TERTIARY_BUTTON_CLASS}>Restablecer Valores</button>
             </div>
           </div>
 
-          {/* Estado actual */}
+          {/* Estado actual y Ahorro */}
           <div className={CARD_CLASS}>
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2 text-indigo-600">Estado Actual 🕒</h2>
+            <h2 className={`text-2xl font-bold mb-5 border-b pb-3 text-${PRIMARY_COLOR}-600`}>
+              Estado Actual
+            </h2>
             
             {/* Días transcurridos y fecha de inicio */}
-            <div className="text-md text-gray-700 mb-4">
-                <p className="font-semibold text-gray-900 mb-1">📅 Inicio de Cultivo: <span className="text-indigo-700">{formatStartDate(startDateObj)}</span></p>
-                <p className="font-semibold text-gray-900">🌱 Días de Cultivo (transcurridos): <span className="text-3xl font-extrabold text-indigo-600 ml-2">{Math.max(0, daysSinceStart)}</span></p>
+            <div className="text-sm text-gray-700 mb-5 pb-3 border-b border-gray-100">
+                <p className="font-semibold text-gray-900 mb-1">📅 Inicio: <span className="text-base text-indigo-700">{formatStartDate(startDateObj)}</span></p>
+                <p className="font-semibold text-gray-900 flex items-center mt-2">
+                    🌱 Días de Cultivo: 
+                    <span className="text-4xl font-extrabold text-indigo-600 ml-2 leading-none">
+                        {Math.max(0, daysSinceStart)}
+                    </span>
+                </p>
             </div>
             
-            <div className="text-sm text-gray-700 space-y-1 border-t pt-3">
-              <div>⏰ **Ahora:** {now.toLocaleString()}</div>
+            <div className="text-sm text-gray-700 space-y-3">
+              <p className="font-medium">
+                ⏰ **Ahora:** <span className="text-gray-900 font-normal">{now.toLocaleTimeString()}</span>
+              </p>
               
-              <div className="mt-2">🔄 **Longitud ciclo:** <strong className="text-indigo-700">{cycleLength}</strong> horas ({hoursLight}L / {hoursDark}D)</div>
-              
-              <div>📅 **Día actual (Cultivo):** <strong className="text-indigo-700">{currentDayIndex + 1}</strong> (Índice: {currentDayIndex})</div>
-              <div>🕰️ **Hora actual del día:** <strong className="text-indigo-700">{currentHourIndex}:00</strong></div>
-              
-              <div className="mt-3 pt-3 border-t">
-                <span className="font-semibold">Estado actual:</span>
-                <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold shadow-md ${isNowLight ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-pink-100 text-pink-700 ring-1 ring-pink-400'}`}>
-                  {isNowLight ? 'LUZ' : 'OSCURIDAD'}
-                </span>
+              <div className="flex justify-between items-center p-2 rounded-lg border border-gray-100 bg-gray-50">
+                  <span className="font-medium">Estado:</span>
+                  <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold ${isNowLight ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-pink-100 text-pink-700 ring-1 ring-pink-400'}`}>
+                    {isNowLight ? 'LUZ' : 'OSCURIDAD'}
+                  </span>
               </div>
               
-              {/* HORARIOS DEL DÍA ACTUAL */}
-              <h3 className="font-semibold text-gray-900 mt-4 pt-2 border-t">Horario del Día Calendario:</h3>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>☀️ **LUZ:** <strong className="text-green-600">{lightScheduleToday.lightStart}</strong> a <strong className="text-green-600">{lightScheduleToday.lightEnd}</strong></div>
-                <div>🌑 **OSCURIDAD:** <strong className="text-pink-600">{lightScheduleToday.darkStart}</strong> a <strong className="text-pink-600">{lightScheduleToday.darkEnd}</strong></div>
+              {/* Progreso (Próximo Cambio) */}
+              <div className="font-semibold p-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50">
+                  <p className="text-xs text-indigo-700 mb-1">Próximo Cambio ({nextChangeEvent.action}):</p>
+                  <span className="text-indigo-900 text-lg font-bold">
+                    {nextChangeEvent.time}
+                  </span>
+                  <span className="text-indigo-700 text-sm ml-1">
+                    del {nextChangeEvent.date}
+                  </span>
+                  <p className="text-xs text-gray-600 mt-1">
+                     (En {nextChangeEvent.hoursToNextChange.toFixed(2)} horas)
+                  </p>
               </div>
-              {lightScheduleToday.status && <p className="text-xs text-red-500 mt-1">*{lightScheduleToday.status}</p>}
 
-
-            </div>
-
-            {/* Progreso dentro del ciclo */}
-            <div className="mt-4">
-              <label className="text-sm font-medium text-gray-700">Progreso dentro del ciclo</label>
-              
-              <div className="w-full bg-gray-200 rounded-full h-3 mt-2 overflow-hidden">
-                <div className="h-3 rounded-full" style={{ width: `${(currentInCycle / cycleLength) * 100}%`, background: isNowLight ? '#10b981' : '#f43f5e' }} />
-              </div>
-              <div className="text-xs text-gray-500 mt-1 text-right">{currentInCycle.toFixed(2)} / {cycleLength} horas</div>
-
-              <div className="text-sm font-semibold mt-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
-                  El próximo cambio es a **{nextChangeEvent.nextState.toUpperCase()}** ({nextChangeEvent.action}):
-                  <br/>
-                  <span className="text-indigo-700 text-base font-bold ml-1">{nextChangeEvent.time}</span> del <span className="text-indigo-700 text-base font-bold">{nextChangeEvent.date}</span>
-                  <span className="text-xs text-gray-500 ml-2"> (en {nextChangeEvent.hoursToNextChange.toFixed(2)} hrs)</span>
+              {/* Horarios del Día Actual */}
+              <div className="pt-3 border-t border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-2">Horario de Hoy:</h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>☀️ LUZ: <strong className="text-green-600">{lightScheduleToday.lightStart}</strong> a <strong className="text-green-600">{lightScheduleToday.lightEnd}</strong></div>
+                  <div>🌑 OSCURIDAD: <strong className="text-pink-600">{lightScheduleToday.darkStart}</strong> a <strong className="text-pink-600">{lightScheduleToday.darkEnd}</strong></div>
+                </div>
+                {lightScheduleToday.status && <p className="text-xs text-red-500 mt-1">*{lightScheduleToday.status}</p>}
               </div>
 
             </div>
-            
-            {/* NUEVA SECCIÓN DE AHORRO */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="text-xl font-semibold text-green-600 mb-2">Eficiencia del Cultivo</h3>
+
+            {/* SECCIÓN DE AHORRO */}
+            <div className="mt-6 pt-5 border-t border-gray-200">
+              <h3 className={`text-xl font-bold text-${ACCENT_COLOR}-600 mb-2`}>Eficiencia (vs 12L/12D)</h3>
               
               <div className="text-sm space-y-2">
                 
                 <p>
-                  **Comparación vs 12L/12D:**
-                  <span className={`ml-2 px-2 py-0.5 rounded-md font-bold ${lightSaving.savingPerHour > 0 ? 'bg-yellow-100 text-yellow-800' : (lightSaving.savingPerHour < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')}`}>
-                    {Math.abs(lightSaving.savingPerHour).toFixed(1)} {lightSaving.comparison === 'Ahorro' ? 'horas menos' : (lightSaving.comparison === 'Gasto' ? 'horas más' : 'horas')} de luz por día
+                  **Diferencia diaria:**
+                  <span className={`ml-2 px-2 py-0.5 rounded-md font-bold text-xs ${lightSaving.savingPerHour > 0 ? 'bg-green-100 text-green-800' : (lightSaving.savingPerHour < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')}`}>
+                    {Math.abs(lightSaving.savingPerHour).toFixed(1)} {lightSaving.comparison === 'Ahorro' ? 'horas menos' : (lightSaving.comparison === 'Gasto' ? 'horas más' : 'horas')}
                   </span>
                 </p>
 
-                <p className="text-lg font-bold">
-                  {lightSaving.comparison === 'Ahorro' ? '🟢 Ahorro Total:' : (lightSaving.comparison === 'Gasto' ? '🔴 Gasto Total:' : '🟡 Balance Total:')}
-                  <span className={`ml-2 text-2xl font-extrabold ${lightSaving.comparison === 'Ahorro' ? 'text-green-700' : (lightSaving.comparison === 'Gasto' ? 'text-red-700' : 'text-gray-700')}`}>
-                    {Math.abs(lightSaving.totalSaving).toFixed(1)} hrs
-                  </span>
-                </p>
-                <p className="text-xs text-gray-500 pt-1">
-                    *El cálculo se basa en el ciclo personalizado vs el ciclo común de 12L/12D, multiplicado por los días de cultivo transcurridos.
-                </p>
+                <div className="p-3 rounded-lg bg-white border border-gray-100 shadow-sm">
+                  <p className="text-sm font-medium">Balance Total:</p>
+                  <p className="text-2xl font-extrabold mt-1">
+                    <span className={`${lightSaving.comparison === 'Ahorro' ? 'text-green-700' : (lightSaving.comparison === 'Gasto' ? 'text-red-700' : 'text-gray-700')}`}>
+                      {lightSaving.totalSaving > 0 ? '+' : ''}{lightSaving.totalSaving.toFixed(1)}
+                    </span> 
+                    <span className="text-base text-gray-500 font-normal ml-1">hrs ahorradas</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -431,34 +450,38 @@ export default function App() {
 
         {/* Calendario */}
         <section className={CARD_CLASS + " p-0"}>
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-xl font-semibold text-indigo-600">Visualización Calendario (Día × Hora)</h2>
-            <div className="text-sm text-gray-500">Mostrando: **{durationDays} días**</div>
+          <div className={`flex items-center justify-between p-5 border-b border-gray-200`}>
+            <h2 className={`text-2xl font-bold text-${PRIMARY_COLOR}-600`}>
+              Visualización Calendario (Día × Hora)
+            </h2>
+            <div className="text-sm text-gray-600">
+              Duración: **{durationDays} días**
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+              <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-2 border-r text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600">Día</th>
+                  <th className="p-3 border-r text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-gray-50">Día</th>
                   {Array.from({length:24}).map((_,h) => (
-                    <th key={h} className="p-2 border-r text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
+                    <th key={h} className="p-3 border-r text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {calendar.map((row, d) => (
                   <tr key={d} className={`transition duration-100 ${d === currentDayIndex ? 'bg-indigo-50 shadow-inner' : 'hover:bg-gray-50'}`}>
-                    <td className="p-2 border-r text-xs font-medium text-gray-900 sticky left-0 bg-white z-10">{d+1}</td>
+                    <td className="p-3 border-r text-xs font-bold text-gray-900 sticky left-0 bg-white z-10">{d+1}</td>
                     {row.map((isLight, h) => {
                       const isCurrentCell = d === currentDayIndex && h === currentHourIndex;
                       const cellClass = isLight 
-                        ? 'bg-green-100 text-green-800' // LUZ
-                        : 'bg-pink-100 text-pink-800'; // OSCURIDAD
+                        ? 'bg-yellow-100 text-yellow-800 border-yellow-200' // LUZ (Amarillo más vivo)
+                        : 'bg-blue-100 text-blue-800 border-blue-200'; // OSCURIDAD (Azul oscuro para noche)
 
                       return (
                         <td key={h} className={`p-0.5 border-r text-center align-middle`}>
-                          <div className={`w-full h-8 flex items-center justify-center text-xs font-bold rounded-sm ${cellClass} ${isCurrentCell ? 'ring-2 ring-indigo-500 scale-105 shadow-lg' : ''} transition-all duration-100 ease-in-out`}>
+                          <div className={`w-full h-8 flex items-center justify-center text-xs font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-2 ring-red-500 scale-105 shadow-lg z-20' : ''} transition-all duration-100 ease-in-out`}>
                             {isLight ? 'L' : 'D'}
                           </div>
                         </td>
@@ -470,8 +493,8 @@ export default function App() {
             </table>
           </div>
 
-          <footer className="mt-3 p-4 text-xs text-gray-500 border-t">
-            **Sugerencias:** Cambia a **18/6** para crecimiento o **12/12** para floración. La configuración se guarda automáticamente en tu navegador.
+          <footer className="mt-3 p-5 text-xs text-gray-500 border-t border-gray-200">
+            **Nota:** Las celdas en **Amarillo** representan Luz (L), y las celdas en **Azul** representan Oscuridad (D). La celda actual está marcada con un borde rojo.
           </footer>
         </section>
 
