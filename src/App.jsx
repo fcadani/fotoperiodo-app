@@ -43,8 +43,13 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react"; // Se añadió Zap para el Balance
+import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
@@ -155,7 +160,7 @@ export default function App() {
     return inCycle < Number(hoursLight);
   }
   
-  // ---- NUEVO: Balance Energético ----
+  // ---- Balance Energético (vs 12L/12D) ----
   const energyBalance = useMemo(() => {
     const daysCultivo = Math.max(0, Math.floor(hoursSinceStartNow / 24));
     const hoursDifference = Number(hoursLight) - 12; // Diferencia con ciclo 12/12
@@ -195,6 +200,7 @@ export default function App() {
     }
 
     const precision = 1 / 60; // 1 minuto
+    
     const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart);
     
     if (isLightAtDayStart) {
@@ -203,6 +209,7 @@ export default function App() {
         darkStartHourToday = 0;
     }
 
+    // Find first transition
     for (let h = 0; h < 24; h += precision) {
       const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
       const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
@@ -235,18 +242,32 @@ export default function App() {
     let lightEndHourToday = null;
     let darkEndHourToday = null;
 
+    // Calculate end time
     if (lightStartHourToday !== null) {
-      lightEndHourToday = (lightStartHourToday === 0 && darkStartHourToday !== 0) ? darkStartHourToday : lightStartHourToday + lightHours;
-      if (lightEndHourToday > 24) lightEndHourToday = 24; 
+      // In a 24h day, the light period must end before it wraps.
+      let tempLightEnd = (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday !== 0) ? darkStartHourToday : lightStartHourToday + lightHours;
+      if (tempLightEnd > 24) tempLightEnd = 24; 
+      lightEndHourToday = tempLightEnd;
     }
     if (darkStartHourToday !== null) {
-      darkEndHourToday = (darkStartHourToday === 0 && lightStartHourToday !== 0) ? lightStartHourToday : darkStartHourToday + darkHours;
-      if (darkEndHourToday > 24) darkEndHourToday = 24; 
+      // In a 24h day, the dark period must end before it wraps.
+      let tempDarkEnd = (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday !== 0) ? lightStartHourToday : darkStartHourToday + darkHours;
+      if (tempDarkEnd > 24) tempDarkEnd = 24; 
+      darkEndHourToday = tempDarkEnd;
     }
     
     if (lightStartHourToday === 0 && lightEndHourToday === null && darkStartHourToday !== 0) {
         lightEndHourToday = darkStartHourToday;
     }
+    
+    // Final check for continuous light or dark when the other period is 0 hours
+    if (lightHours > 0 && darkHours === 0) {
+        return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
+    }
+    if (lightHours === 0 && darkHours > 0) {
+        return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
+    }
+
 
     return {
       status: null,
@@ -324,8 +345,8 @@ export default function App() {
 
   // ---- JSX ----
   const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-red-400' : 'text-gray-400';
-  const balanceIcon = energyBalance > 0 ? '↑' : energyBalance < 0 ? '↓' : '—';
-  const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Déficit de' : 'Balance';
+  const balanceIcon = energyBalance > 0 ? '▲' : energyBalance < 0 ? '▼' : '—';
+  const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Gasto Extra de' : 'Balance Neutral de';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-white">
@@ -406,11 +427,11 @@ export default function App() {
 
               {/* BALANCE ENERGÉTICO */}
               <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12/12):</div>
+                <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12L/12D):</div>
                 <div className={`font-extrabold text-xl ${balanceColor}`}>
                   {balanceIcon} {Math.abs(energyBalance).toFixed(1)} hrs
                 </div>
-                <div className="text-xs text-gray-400">{balanceText} de luz acumulado.</div>
+                <div className="text-xs text-gray-400">{balanceText} luz acumulado.</div>
               </div>
               {/* FIN BALANCE ENERGÉTICO */}
 
