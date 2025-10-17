@@ -38,8 +38,13 @@ Requisitos:
  * Archivo final con correcciones de lógica, UI/UX mejorado para modo oscuro y responsividad (móvil/escritorio).
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Sun, Moon, Download, Upload, RefreshCw } from "lucide-react";
+import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react"; // Se añadió Zap para el Balance
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
@@ -149,7 +154,15 @@ export default function App() {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
   }
-
+  
+  // ---- NUEVO: Balance Energético ----
+  const energyBalance = useMemo(() => {
+    const daysCultivo = Math.max(0, Math.floor(hoursSinceStartNow / 24));
+    const hoursDifference = Number(hoursLight) - 12; // Diferencia con ciclo 12/12
+    const totalBalance = hoursDifference * daysCultivo;
+    return totalBalance;
+  }, [hoursLight, hoursSinceStartNow]);
+  
   // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
     const rows = [];
@@ -174,18 +187,14 @@ export default function App() {
     let lightStartHourToday = null;
     let darkStartHourToday = null;
 
-    if (lightHours === 0) { // Oscuridad continua
+    if (lightHours === 0) {
       return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
     }
-    if (darkHours === 0) { // Luz continua
+    if (darkHours === 0) {
       return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
-    // Buscar la hora exacta del primer encendido/apagado dentro del día (0 a 24)
-    // Usamos una precisión de 1 minuto (0.0166h) para encontrar la transición
     const precision = 1 / 60; // 1 minuto
-    
-    // Determinar estado al inicio del día (00:00)
     const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart);
     
     if (isLightAtDayStart) {
@@ -194,37 +203,28 @@ export default function App() {
         darkStartHourToday = 0;
     }
 
-    // Iterar para encontrar la primera transición
     for (let h = 0; h < 24; h += precision) {
       const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
       const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
       const wasLightBefore = isLightAtAbsoluteHours(currentAbsoluteHour - precision);
 
-      // Transición Oscuro -> Luz
-      if (isLight && !wasLightBefore && lightStartHourToday === 0) {
+      if (isLight && !wasLightBefore && lightStartHourToday !== 0) {
         lightStartHourToday = h;
       } 
-      // Transición Luz -> Oscuro
-      if (!isLight && wasLightBefore && darkStartHourToday === 0) {
+      if (!isLight && wasLightBefore && darkStartHourToday !== 0) {
         darkStartHourToday = h;
       }
 
-      // Si ya encontramos la hora de encendido (y era oscuro al inicio), salir
-      if (lightStartHourToday !== null && darkStartHourToday === 0) break;
-      
-      // Si ya encontramos la hora de apagado (y era luz al inicio), salir
-      if (darkStartHourToday !== null && lightStartHourToday === 0) break;
+      if (lightStartHourToday !== null && darkStartHourToday !== null && lightStartHourToday !== 0 && darkStartHourToday !== 0) break;
     }
 
 
     const formatTime = (h) => {
       if (h === null) return 'N/A';
-      // Redondear a la precisión de 1 minuto para un tiempo limpio
       const totalMinutes = Math.round(h * 60);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
       
-      // Usar un objeto Date para formatear la hora, manteniendo el contexto del día
       const d = new Date(startDateObj.getTime());
       d.setHours(0,0,0,0);
       d.setTime(d.getTime() + (currentDayIndex * 24 + hours) * 3600000 + minutes * 60000);
@@ -235,21 +235,15 @@ export default function App() {
     let lightEndHourToday = null;
     let darkEndHourToday = null;
 
-    // Calcular la hora de fin usando las horas de duración del ciclo
     if (lightStartHourToday !== null) {
-      lightEndHourToday = (lightStartHourToday === 0 && darkStartHourToday !== null) ? darkStartHourToday : lightStartHourToday + lightHours;
+      lightEndHourToday = (lightStartHourToday === 0 && darkStartHourToday !== 0) ? darkStartHourToday : lightStartHourToday + lightHours;
       if (lightEndHourToday > 24) lightEndHourToday = 24; 
     }
     if (darkStartHourToday !== null) {
-      darkEndHourToday = (darkStartHourToday === 0 && lightStartHourToday !== null) ? lightStartHourToday : darkStartHourToday + darkHours;
+      darkEndHourToday = (darkStartHourToday === 0 && lightStartHourToday !== 0) ? lightStartHourToday : darkStartHourToday + darkHours;
       if (darkEndHourToday > 24) darkEndHourToday = 24; 
     }
-
-    // Caso especial: si el ciclo es más largo que 24h, solo mostrar el segmento que cae en el día
-    if (lightEndHourToday > 24 && lightStartHourToday !== 0) lightEndHourToday = 24;
-    if (darkEndHourToday > 24 && darkStartHourToday !== 0) darkEndHourToday = 24;
     
-    // Si el día comienza en Luz (00:00) y termina en Luz (24:00)
     if (lightStartHourToday === 0 && lightEndHourToday === null && darkStartHourToday !== 0) {
         lightEndHourToday = darkStartHourToday;
     }
@@ -329,6 +323,10 @@ export default function App() {
   useEffect(() => { validateInputs(); }, [validateInputs]);
 
   // ---- JSX ----
+  const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-red-400' : 'text-gray-400';
+  const balanceIcon = energyBalance > 0 ? '↑' : energyBalance < 0 ? '↓' : '—';
+  const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Déficit de' : 'Balance';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-white">
       <div className="w-full max-w-5xl bg-slate-900/70 rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border border-slate-700 backdrop-blur-sm">
@@ -338,7 +336,7 @@ export default function App() {
             <div className="p-2 rounded-xl bg-yellow-900/50 shadow-md"><Sun className="w-7 h-7 text-yellow-300" /></div>
             <div className="p-2 rounded-xl bg-indigo-900/50 shadow-md"><Moon className="w-7 h-7 text-indigo-300" /></div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Fotoperiodo — Control de Ciclos</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Fotoperiodo — Control de Ciclos</h1>
           <p className="text-sm text-gray-300 mt-1">Configura cualquier fotoperiodo y visualizá el calendario</p>
         </header>
 
@@ -346,43 +344,43 @@ export default function App() {
 
           {/* Configuration */}
           <section className="lg:col-span-2 bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg">
-            <h2 className="text-xl font-semibold mb-4 text-white">Configuración</h2>
+            <h2 className="text-lg font-semibold mb-4 text-white">Configuración</h2>
 
             <div className="grid gap-4">
               <label className="text-sm text-gray-100">Fecha y hora de inicio</label>
               <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
 
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm text-gray-100">Horas luz (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursLight}
                     onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
                 </div>
                 <div>
                   <label className="text-sm text-gray-100">Horas oscuridad (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursDark}
                     onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
                 </div>
                 <div>
                   <label className="text-sm text-gray-100">Duración (días)</label>
                   <input type="number" min="1" max="9999" value={durationDays}
                     onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-700 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Exportar</button>
+                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Exportar</button>
 
-                <label className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
+                <label className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
                   <Upload className="w-4 h-4"/> Importar
                   <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
                 </label>
 
-                <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"> <RefreshCw className="w-4 h-4"/> Reset</button>
+                <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"> <RefreshCw className="w-4 h-4"/> Reset</button>
 
                 <div className="ml-auto text-xs text-gray-400 self-center">Guardado local automático</div>
               </div>
@@ -393,7 +391,7 @@ export default function App() {
 
           {/* Status */}
           <aside className="bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg">
-            <h3 className="text-xl font-semibold mb-4 text-white">Estado</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white">Estado</h3>
 
             <div className="space-y-4 text-sm text-gray-200">
               <div className="border-b border-slate-700 pb-2">
@@ -403,12 +401,22 @@ export default function App() {
 
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400">Días de cultivo:</div>
-                <div className="text-2xl font-extrabold text-white">{Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}</div>
+                <div className="text-xl font-extrabold text-white">{Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}</div>
               </div>
+
+              {/* BALANCE ENERGÉTICO */}
+              <div className="border-b border-slate-700 pb-2">
+                <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12/12):</div>
+                <div className={`font-extrabold text-xl ${balanceColor}`}>
+                  {balanceIcon} {Math.abs(energyBalance).toFixed(1)} hrs
+                </div>
+                <div className="text-xs text-gray-400">{balanceText} de luz acumulado.</div>
+              </div>
+              {/* FIN BALANCE ENERGÉTICO */}
 
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400">Hora actual:</div>
-                <div className="font-mono text-xl text-white">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="font-mono text-lg text-white">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
 
               <div className="border-b border-slate-700 pb-2">
@@ -424,7 +432,7 @@ export default function App() {
 
               <div>
                 <div className="text-xs text-gray-400">Horario **HOY**:</div>
-                <div className="text-sm grid grid-cols-2 gap-2 text-white">
+                <div className="text-sm grid grid-cols-2 gap-1 text-white">
                   <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
                   <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
                 </div>
@@ -444,9 +452,9 @@ export default function App() {
               <table className="min-w-full text-xs text-gray-200">
                 <thead className="bg-slate-800 sticky top-0 shadow-md">
                   <tr>
-                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-white z-10 w-12">Día</th>
+                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Día</th>
                     {Array.from({length:24}).map((_,h) => (
-                      <th key={h} className="p-2 text-center text-gray-300 w-8">{h}h</th>
+                      <th key={h} className="p-2 text-center text-sm text-gray-300 w-8">{h}h</th>
                     ))}
                   </tr>
                 </thead>
