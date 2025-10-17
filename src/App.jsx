@@ -3,8 +3,8 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- CORRECCIÓN CLAVE: Se corrige la inconsistencia de fechas y horas en 'Horario HOY' y se RESTAURA el bloque de OSCURIDAD para que todos los eventos sean visibles y coherentes.
-- MEJORA: Se restaura el formato Días/Horas/Minutos para el tiempo transcurrido.
+- CORRECCIÓN CLAVE: Se corrige y simplifica la lógica de fechas y horas en 'lightScheduleToday' para que los horarios ON/OFF coincidan exactamente con 'Próximo Evento' al cruzar la medianoche, centrándose solo en la fase de LUZ (ON/OFF).
+- MEJORA: El bloque de Horario HOY se unifica en una sola tarjeta con etiquetas dinámicas.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -183,57 +183,39 @@ export default function App() {
 
   // ---- Determine today's precise schedule (encendido/apagado) ----
   const lightScheduleToday = useMemo(() => {
-    const dayIndex = currentDayIndex24h; 
-    const dayStartAbsoluteHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
     const lightHours = Number(hoursLight);
     const darkHours = Number(hoursDark);
+    const cycleLen = cycleLength;
 
-    let lightStartHourToday = null;
-    let darkStartHourToday = null;
+    if (lightHours === 0) return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: false };
+    if (darkHours === 0) return { status: 'Luz continua', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: true };
 
-    if (lightHours === 0) {
-      return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
-    }
-    if (darkHours === 0) {
-      return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
-    }
+    // 1. Calcular las horas absolutas al inicio del ciclo actual (horas desde el startDateObj)
+    const currentCycleStartAbsoluteHours = hoursSinceStartNow - currentInCycle; 
 
-    const precision = 1 / 60; // 1 minuto
+    // 2. Determinar si 'now' está en Luz o en Oscuridad y establecer el inicio de Luz
+    let lightStartAbsolute;
     
-    // 1. Determinar el estado inicial del día (hora 0)
-    // Usamos un ligero offset para saber el estado "justo después" del inicio del día de calendario
-    const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart + precision);
-    
-    if (isLightAtDayStart) {
-        lightStartHourToday = 0;
+    if (isNowLight) {
+      // Si estamos en LUZ, el inicio fue al inicio del ciclo actual.
+      lightStartAbsolute = currentCycleStartAbsoluteHours;
     } else {
-        darkStartHourToday = 0;
+      // Si estamos en OSCURIDAD, el inicio de luz fue en el ciclo anterior.
+      lightStartAbsolute = currentCycleStartAbsoluteHours - cycleLen;
     }
 
-    // 2. Buscar la primera transición
-    for (let h = precision; h < 24; h += precision) {
-      const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
-      const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
-      const wasLightBefore = isLightAtAbsoluteHours(currentAbsoluteHour - precision);
+    // El fin de luz es siempre la hora de inicio de luz + la duración de luz.
+    let lightEndAbsolute = lightStartAbsolute + lightHours;
 
-      if (isLight && !wasLightBefore && lightStartHourToday === null) {
-        lightStartHourToday = h;
-      } 
-      if (!isLight && wasLightBefore && darkStartHourToday === null) {
-        darkStartHourToday = h;
-      }
-
-      if (lightStartHourToday !== null && darkStartHourToday !== null) break;
+    // Aseguramos que la fase de LUZ mostrada en Horario HOY sea la más relevante (la que terminó más recientemente o la que está activa).
+    // Si la fase de luz terminó antes de ahora, la ajustamos para mostrar la próxima fase de luz que viene.
+    while (lightEndAbsolute < hoursSinceStartNow) {
+        lightStartAbsolute += cycleLen;
+        lightEndAbsolute += cycleLen;
     }
-    
-    // 3. Formatear la hora y **fecha completa**
-    // Se usa el número de horas transcurridas desde el inicio del programa (startDateObj)
-    const formatDateTime = (hRelative) => {
-      if (hRelative === null) return 'N/A';
-      
-      // hAbsolute es el total de horas transcurridas desde el startDateObj hasta este evento
-      const hAbsolute = dayIndex * 24 + hRelative - fractionalStartOffset;
-      
+
+    // Función para formatear la fecha y hora absoluta (con mes, día, hora, min)
+    const formatDateTime = (hAbsolute) => {
       const d = new Date(startDateObj.getTime() + hAbsolute * 3600000); // 3600000ms en una hora
 
       return d.toLocaleDateString([], { 
@@ -244,58 +226,13 @@ export default function App() {
       });
     };
     
-    // 4. Calcular el tiempo absoluto del evento de fin (en horas)
-    // El fin de una fase es el inicio de la siguiente. 
-    
-    // Si la luz empieza hoy, el fin de la luz (OFF) ocurre LightHours después del inicio de luz
-    let lightEndToFormat = null;
-    if (lightStartHourToday !== null) {
-        lightEndToFormat = lightStartHourToday + lightHours;
-    } else if (darkStartHourToday === 0) { 
-        // Si la oscuridad empezó a 0h, el final de la luz del ciclo anterior puede caer en este día 24h
-        // Buscamos el inicio de luz más cercano (que sería el final de la oscuridad de hoy),
-        // y retrocedemos la duración de luz.
-        if (darkStartHourToday !== null) {
-             // Este caso es complejo en un ciclo > 24h. Usamos el inicio de oscuridad (darkStartHourToday) 
-             // como el final de luz, si es que la luz termina en este día.
-             lightEndToFormat = darkStartHourToday; 
-        }
-    }
-    
-    // Si la oscuridad empieza hoy, el fin de la oscuridad (ON) ocurre DarkHours después del inicio de oscuridad
-    let darkEndToFormat = null;
-    if (darkStartHourToday !== null) {
-        darkEndToFormat = darkStartHourToday + darkHours;
-    } else if (lightStartHourToday === 0) {
-        // Si la luz empezó a 0h, el final de la oscuridad del ciclo anterior puede caer en este día 24h
-        // Usamos el inicio de luz (lightStartHourToday) como el final de oscuridad, si la oscuridad termina en este día.
-        darkEndToFormat = lightStartHourToday; 
-    }
-    
-    // Si la luz comienza a 0h, su final es lightStartHourToday + lightHours
-    if (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday > 0) {
-      // El fin de la luz (OFF) es el inicio de oscuridad
-      lightEndToFormat = darkStartHourToday;
-      // El fin de la oscuridad (ON) es el inicio de luz del siguiente ciclo (darkStartHourToday + darkHours)
-      darkEndToFormat = darkStartHourToday + darkHours; 
-    } 
-    // Si la oscuridad comienza a 0h, su final es darkStartHourToday + darkHours
-    else if (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday > 0) {
-      // El fin de la oscuridad (ON) es el inicio de luz
-      darkEndToFormat = lightStartHourToday;
-      // El fin de la luz (OFF) es el inicio de oscuridad del siguiente ciclo (lightStartHourToday + lightHours)
-      lightEndToFormat = lightStartHourToday + lightHours; 
-    }
-
-
     return {
       status: null,
-      lightStart: formatDateTime(lightStartHourToday),
-      lightEnd: formatDateTime(lightEndToFormat), // Usa la duración real para la fecha/hora
-      darkStart: formatDateTime(darkStartHourToday),
-      darkEnd: formatDateTime(darkEndToFormat), // Usa la duración real para la fecha/hora
+      lightStart: formatDateTime(lightStartAbsolute),
+      lightEnd: formatDateTime(lightEndAbsolute), 
+      isLightActive: isNowLight // Usamos el estado global, que es más simple y correcto.
     };
-  }, [currentDayIndex24h, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
+  }, [hoursLight, hoursDark, cycleLength, hoursSinceStartNow, currentInCycle, isNowLight, startDateObj]);
 
 
   // ---- next change event ----
@@ -488,27 +425,21 @@ export default function App() {
               </div>
 
               {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
+              {/* ESTE ES EL BLOQUE ÚNICO SOLICITADO */}
               <div>
                 <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
                 <div className="text-sm grid grid-cols-1 gap-3 text-white">
                   <div className="border border-yellow-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-yellow-400 font-semibold block mb-1 text-base">ON (Inicio Luz):</span> 
+                    <span className="text-yellow-400 font-semibold block mb-1 text-base">
+                      {lightScheduleToday.isLightActive ? 'ON (Inicio Luz Actual):' : 'ON (Próx. Encendido):'}
+                    </span> 
                     <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
                     
-                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">OFF (Fin Luz / Próx. Apagado):</span> 
+                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">
+                      {lightScheduleToday.isLightActive ? 'OFF (Próx. Apagado):' : 'OFF (Fin Luz Anterior):'}
+                    </span> 
                     <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
                   </div>
-                  
-                  {/* ESTE ES EL BLOQUE QUE FALTABA O ESTABA INCOMPLETO */}
-                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.darkStart}</div>
-                    
-                    <span className="text-emerald-400 font-semibold block mt-3 mb-1 text-base">ON (Fin Oscuridad / Próx. Encendido):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.darkEnd}</div>
-                  </div>
-                  {/* FIN BLOQUE RESTAURADO */}
-                  
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
