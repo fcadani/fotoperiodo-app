@@ -1,9 +1,8 @@
 /**
 Polished App.jsx — Fotoperiodo App
 - Código revisado, limpio y listo para producción.
-- Enfocado en el Super Ciclo (Fotoperiodos Alternativos).
-- La fecha de inicio del calendario coincide exactamente con la hora seleccionada (hora de escritorio).
-- CORRECCIÓN CLAVE: Se unifica la lógica de cálculo de fase de LUZ (isLightAtAbsoluteHours) para garantizar que el estado actual y el calendario coincidan siempre.
+- CORRECCIÓN CLAVE: Se introduce una función unificada (getLightPhase) para determinar la fase de luz, garantizando que el estado actual (isNowLight) y el resaltado del calendario sean siempre coherentes.
+- La lógica de 'lightScheduleToday' ha sido refinada para calcular correctamente el ON/OFF más relevante basado en la hora actual.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -28,24 +27,28 @@ function fmtDateTimeLocal(d) {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
-// *** FUNCIÓN DE FASE DE LUZ UNIFICADA (Fuera del componente para reusabilidad y limpieza)
+// *** FUNCIÓN DE FASE DE LUZ UNIFICADA ***
 function getLightPhase(hoursSinceStart, hoursLight, cycleLength) {
-    if (cycleLength <= 0.0000001) return false;
-    // La hora dentro del ciclo. Añadir cycleLength antes de % asegura que el resultado sea siempre positivo.
+    if (hoursLight <= 0) return false;
+    if (cycleLength <= hoursLight) return true; // Luz continua
+    
+    // Asegurarse de que el tiempo dentro del ciclo sea siempre positivo
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < hoursLight;
 }
-// *** FIN FUNCIÓN DE FASE DE LUZ UNIFICADA
+// *** FIN FUNCIÓN DE FASE DE LUZ UNIFICADA ***
+
 
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
+    // Inicialización al inicio del día actual (hora de escritorio).
     const d = new Date(); d.setHours(0,0,0,0);
     return fmtDateTimeLocal(d);
   });
 
-  const [hoursLight, setHoursLight] = useState(13); // Valores por defecto no-24h
-  const [hoursDark, setHoursDark] = useState(14); // Valores por defecto no-24h
+  const [hoursLight, setHoursLight] = useState(13);
+  const [hoursDark, setHoursDark] = useState(14);
   const [durationDays, setDurationDays] = useState(60);
 
   const [now, setNow] = useState(new Date());
@@ -119,7 +122,6 @@ export default function App() {
   const isNowLight = useMemo(() => {
     return getLightPhase(hoursSinceStartNow, Number(hoursLight), cycleLength);
   }, [hoursSinceStartNow, hoursLight, cycleLength]);
-  // *** FIN CORRECCIÓN CLAVE
 
   // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
@@ -134,7 +136,7 @@ export default function App() {
     return getLightPhase(hoursSinceStart, Number(hoursLight), cycleLength);
   }
   // *** FIN FUNCIÓN DE FASE DE LUZ PARA EL CALENDARIO
-  
+
   // ---- Balance Energético (vs 12L/12D) ----
   const energyBalance = useMemo(() => {
     if (hoursSinceStartNow < 0) return 0; 
@@ -142,13 +144,9 @@ export default function App() {
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
 
-    // Horas de luz consumidas por el ciclo personalizado hasta ahora
     const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
-
-    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
 
-    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
@@ -203,32 +201,36 @@ export default function App() {
     if (lightHours === 0) return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: false };
     if (darkHours === 0) return { status: 'Luz continua', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: true };
 
-    // 1. Calcular el inicio del ciclo actual (tiempo absoluto)
+    // 1. Calcular las horas absolutas al inicio del ciclo actual (horas desde el startDateObj)
     const currentCycleStartAbsoluteHours = hoursSinceStartNow - currentInCycle; 
 
     // 2. Determinar el inicio de luz más reciente/actual
     let lightStartAbsolute;
     
-    // Si estamos en LUZ, el inicio de luz fue al inicio del ciclo actual.
     if (isNowLight) {
+      // Si estamos en LUZ, el inicio fue al inicio del ciclo actual.
       lightStartAbsolute = currentCycleStartAbsoluteHours;
     } else {
       // Si estamos en OSCURIDAD, el inicio de luz fue en el ciclo anterior.
-      lightStartAbsolute = currentCycleStartAbsoluteHours - darkHours; // Corregido el cálculo del inicio de luz anterior
+      lightStartAbsolute = currentCycleStartAbsoluteHours - darkHours; // NOTA: Esto no es -cycleLen como en el código anterior, sino -darkHours.
     }
-
-    // El fin de luz es siempre la hora de inicio de luz + la duración de luz.
+    
     let lightEndAbsolute = lightStartAbsolute + lightHours;
 
-    // *** CORRECCIÓN CLAVE: Ajustar la fase de LUZ mostrada para que siempre sea la que contiene 'now' o la PRÓXIMA.
-    // Si la fase de luz terminó y estamos en oscuridad, ajustamos al próximo encendido
+    // Ajustar para mostrar la próxima fase de luz si la actual terminó
     while (lightEndAbsolute < hoursSinceStartNow) {
         lightStartAbsolute += cycleLen;
         lightEndAbsolute += cycleLen;
     }
-    // Si la fase de luz está activa, ya está correcta (lightStartAbsolute <= hoursSinceStartNow < lightEndAbsolute)
-    // *** FIN CORRECCIÓN CLAVE
-
+    
+    // Si estamos en oscuridad y lightStartAbsolute es aún anterior a la hora actual,
+    // significa que el cálculo anterior de lightStartAbsolute nos dio la fase de luz anterior.
+    // Necesitamos el PRÓXIMO encendido.
+    if (!isNowLight && lightStartAbsolute < hoursSinceStartNow) {
+        lightStartAbsolute += cycleLen;
+        lightEndAbsolute += cycleLen;
+    }
+    
     // Función para formatear la fecha y hora absoluta (con mes, día, hora, min)
     const formatDateTime = (hAbsolute) => {
       const d = new Date(startDateObj.getTime() + hAbsolute * 3600000); // 3600000ms en una hora
@@ -245,9 +247,9 @@ export default function App() {
       status: null,
       lightStart: formatDateTime(lightStartAbsolute),
       lightEnd: formatDateTime(lightEndAbsolute), 
-      isLightActive: isNowLight
+      isLightActive: isNowLight 
     };
-  }, [hoursLight, darkHours, cycleLength, hoursSinceStartNow, currentInCycle, isNowLight, startDateObj]);
+  }, [hoursLight, hoursDark, cycleLength, hoursSinceStartNow, currentInCycle, isNowLight, startDateObj]);
 
 
   // ---- next change event ----
@@ -309,7 +311,7 @@ export default function App() {
   const formatStartDate = useCallback((dObj) => {
     if (!dObj || isNaN(dObj.getTime())) return '--';
     return dObj.toLocaleString();
-  }, [startDateObj]);
+  }, []);
 
   // run validation to show errors early
   useEffect(() => { validateInputs(); }, [validateInputs]);
