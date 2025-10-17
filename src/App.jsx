@@ -53,6 +53,11 @@ Requisitos:
  * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
  */
 
+/**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -157,7 +162,8 @@ export default function App() {
     return currentInCycle < Number(hoursLight);
   }, [currentInCycle, hoursLight]);
 
-  const currentDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / 24), [hoursSinceStartNow]);
+  // Corregido: Días de cultivo es la cantidad de ciclos PERSONALIZADOS completos
+  const currentDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   function isLightAtAbsoluteHours(hoursSinceStart) {
@@ -165,9 +171,9 @@ export default function App() {
     return inCycle < Number(hoursLight);
   }
   
-  // ---- Balance Energético (vs 12L/12D) - CORREGIDO POR DURACIÓN TOTAL ----
+  // ---- Balance Energético (vs 12L/12D) - Corregido por duración total ----
   const energyBalance = useMemo(() => {
-    if (hoursSinceStartNow < 0) return 0; // No hay balance si la hora de inicio es futura
+    if (hoursSinceStartNow < 0) return 0; 
 
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
@@ -178,23 +184,26 @@ export default function App() {
     // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
 
-    // Balance: Común - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
+    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
   
   // ---- Días Superciclo (Duración equivalente en ciclos de 24h) ----
   const superCycleDays = useMemo(() => {
+    // Es el tiempo total transcurrido, expresado en días de 24 horas.
     return hoursSinceStartNow / 24;
   }, [hoursSinceStartNow]);
   
   // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
     const rows = [];
-    const days = clamp(Number(durationDays) || 0, 1, 9999);
+    // Ahora 'days' representa la cantidad de días de 24 horas a mostrar
+    const days = clamp(Number(durationDays) || 0, 1, 9999); 
     for (let d = 0; d < days; d++) {
       const row = [];
       for (let h = 0; h < 24; h++) {
+        // En el calendario, 'd' es el día de 24 horas.
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
       }
@@ -205,7 +214,9 @@ export default function App() {
 
   // ---- Determine today's precise schedule (encendido/apagado) ----
   const lightScheduleToday = useMemo(() => {
-    const dayStartAbsoluteHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
+    // En el horario de hoy, usamos el día de 24 horas.
+    const dayIndex = Math.floor(hoursSinceStartNow / 24); 
+    const dayStartAbsoluteHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
     const lightHours = Number(hoursLight);
     const darkHours = Number(hoursDark);
 
@@ -221,6 +232,7 @@ export default function App() {
 
     const precision = 1 / 60; // 1 minuto
     
+    // Determinar el estado al inicio del día de 24h
     const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart);
     
     if (isLightAtDayStart) {
@@ -229,22 +241,24 @@ export default function App() {
         darkStartHourToday = 0;
     }
 
-    // Find first transition
+    // Buscar la primera transición
     for (let h = 0; h < 24; h += precision) {
       const currentAbsoluteHour = dayStartAbsoluteHoursSinceStart + h;
       const isLight = isLightAtAbsoluteHours(currentAbsoluteHour);
       const wasLightBefore = isLightAtAbsoluteHours(currentAbsoluteHour - precision);
 
-      if (isLight && !wasLightBefore && lightStartHourToday !== 0) {
+      // Transición Oscuridad -> Luz
+      if (isLight && !wasLightBefore && lightStartHourToday === null) {
         lightStartHourToday = h;
       } 
-      if (!isLight && wasLightBefore && darkStartHourToday !== 0) {
+      // Transición Luz -> Oscuridad
+      if (!isLight && wasLightBefore && darkStartHourToday === null) {
         darkStartHourToday = h;
       }
 
-      if (lightStartHourToday !== null && darkStartHourToday !== null && lightStartHourToday !== 0 && darkStartHourToday !== 0) break;
+      if (lightStartHourToday !== null && darkStartHourToday !== null && 
+          (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
     }
-
 
     const formatTime = (h) => {
       if (h === null) return 'N/A';
@@ -254,7 +268,8 @@ export default function App() {
       
       const d = new Date(startDateObj.getTime());
       d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (currentDayIndex * 24 + hours) * 3600000 + minutes * 60000);
+      // Usamos dayIndex (el día de 24h)
+      d.setTime(d.getTime() + (dayIndex * 24 + hours) * 3600000 + minutes * 60000);
       
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
@@ -262,30 +277,24 @@ export default function App() {
     let lightEndHourToday = null;
     let darkEndHourToday = null;
 
-    // Calculate end time
+    // Calcular hora de fin
     if (lightStartHourToday !== null) {
-      let tempLightEnd = (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday !== 0) ? darkStartHourToday : lightStartHourToday + lightHours;
+      let tempLightEnd = lightStartHourToday + lightHours;
+      if (darkStartHourToday !== null && darkStartHourToday !== 0 && lightStartHourToday < darkStartHourToday) {
+          tempLightEnd = darkStartHourToday;
+      }
       if (tempLightEnd > 24) tempLightEnd = 24; 
       lightEndHourToday = tempLightEnd;
     }
+    
     if (darkStartHourToday !== null) {
-      let tempDarkEnd = (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday !== 0) ? lightStartHourToday : darkStartHourToday + darkHours;
+      let tempDarkEnd = darkStartHourToday + darkHours;
+      if (lightStartHourToday !== null && lightStartHourToday !== 0 && darkStartHourToday < lightStartHourToday) {
+          tempDarkEnd = lightStartHourToday;
+      }
       if (tempDarkEnd > 24) tempDarkEnd = 24; 
       darkEndHourToday = tempDarkEnd;
     }
-    
-    if (lightStartHourToday === 0 && lightEndHourToday === null && darkStartHourToday !== 0) {
-        lightEndHourToday = darkStartHourToday;
-    }
-    
-    // Final check for continuous light or dark when the other period is 0 hours
-    if (lightHours > 0 && darkHours === 0) {
-        return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
-    }
-    if (lightHours === 0 && darkHours > 0) {
-        return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
-    }
-
 
     return {
       status: null,
@@ -294,7 +303,7 @@ export default function App() {
       darkStart: formatTime(darkStartHourToday),
       darkEnd: formatTime(darkEndHourToday),
     };
-  }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
+  }, [hoursSinceStartNow, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
 
 
   // ---- next change event ----
@@ -438,21 +447,23 @@ export default function App() {
                 <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
               </div>
 
-              {/* Días de Cultivo y Superciclo juntos */}
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Días transcurridos (Días de Cultivo):</div>
-                <div className="grid grid-cols-2 gap-2">
+              {/* Días de Cultivo y Superciclo juntos - MEJORA DE UI */}
+              <div className="border-b border-slate-700 pb-2 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-400">Días Cultivo (Ciclos de {cycleLength.toFixed(1)}h):</div>
                     <div className="font-extrabold text-xl text-white">
-                        {Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}
+                        {Math.max(0, currentDayIndex)}
                     </div>
-                    <div className="text-right">
-                        <div className="text-xs text-gray-400">VS Días Superciclo (24h):</div>
-                        <div className="font-mono text-base text-indigo-300">
-                            {superCycleDays.toFixed(2)}
-                        </div>
-                    </div>
-                </div>
+                  </div>
+                  <div className="text-right">
+                      <div className="text-xs text-gray-400">Días Cultivo (VS 24h):</div>
+                      <div className="font-mono text-xl text-indigo-300">
+                          {Math.max(0, superCycleDays).toFixed(2)}
+                      </div>
+                  </div>
               </div>
+              {/* FIN Días de Cultivo y Superciclo */}
+
 
               {/* BALANCE ENERGÉTICO */}
               <div className="border-b border-slate-700 pb-2">
@@ -481,7 +492,7 @@ export default function App() {
               </div>
 
               <div>
-                <div className="text-xs text-gray-400">Horario **HOY**:</div>
+                <div className="text-xs text-gray-400">Horario **HOY** (Día {Math.floor(hoursSinceStartNow / 24) + 1} de 24h):</div>
                 <div className="text-sm grid grid-cols-2 gap-1 text-white">
                   <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
                   <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
@@ -510,10 +521,11 @@ export default function App() {
                 </thead>
                 <tbody>
                   {calendar.map((row, d) => (
-                    <tr key={d} className={`${d === currentDayIndex ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
+                    // 'd' aquí es el día de 24 horas. currentDayIndex de 24h es Math.floor(hoursSinceStartNow / 24)
+                    <tr key={d} className={`${d === Math.floor(hoursSinceStartNow / 24) ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
+                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === Math.floor(hoursSinceStartNow / 24) ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
                       {row.map((isLight, h) => {
-                        const isCurrent = d === currentDayIndex && h === currentHourIndex;
+                        const isCurrent = d === Math.floor(hoursSinceStartNow / 24) && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
                             <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold 
