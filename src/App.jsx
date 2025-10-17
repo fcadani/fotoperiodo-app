@@ -84,6 +84,11 @@ Requisitos:
  */
 
 /**
+ * Fotoperiodo App — Módulo de Control
+ * Archivo final con Balance Energético, correcciones de fuente, y UI/UX mejorado para modo oscuro y responsividad.
+ */
+
+/**
  * Fotoperiodo App — Módulo de Control (Versión de Máxima Robustez)
  * - Restaura el cálculo de 'lightScheduleToday' a una versión matemática robusta.
  * - Mantiene el Balance Energético (vs 12L/12D) y el calendario funcional.
@@ -293,7 +298,7 @@ export default function App() {
           (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
     }
 
-    // ** MODIFICACIÓN CLAVE: Formatear a fecha/hora completa **
+    // ** MODIFICACIÓN: Formatear a fecha/hora completa **
     const formatDateTime = (h) => {
       if (h === null) return 'N/A';
       const totalMinutes = Math.round(h * 60);
@@ -313,7 +318,7 @@ export default function App() {
         minute: '2-digit' 
       });
     };
-    // ** FIN MODIFICACIÓN CLAVE **
+    // ** FIN MODIFICACIÓN **
 
 
     let lightEndHourToday = null;
@@ -535,7 +540,7 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
-              {/* ** BLOQUE MODIFICADO DE HORARIO ** */}
+              {/* ** BLOQUE SOLICITADO (ON/OFF con fecha y hora) ** */}
               <div>
                 <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
                 <div className="text-sm grid grid-cols-1 gap-3 text-white mt-2">
@@ -556,7 +561,7 @@ export default function App() {
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
-              {/* ** FIN BLOQUE MODIFICADO ** */}
+              {/* ** FIN BLOQUE SOLICITADO ** */}
             </div>
           </aside>
 
