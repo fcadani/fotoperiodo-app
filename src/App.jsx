@@ -257,7 +257,7 @@ export default function App() {
   return (
     // Fondo oscuro total
     <div className="min-h-screen bg-gray-900 text-gray-300 p-6 font-sans">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <header className="mb-8 pt-4 pb-2 text-center border-b border-gray-700">
           <h1 className={`text-3xl font-extrabold tracking-wider text-white`}>
             Fotoperiodo | Módulo de Control
