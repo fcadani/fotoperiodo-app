@@ -149,10 +149,7 @@ export default function App() {
   }, [daysSinceStart, hoursLight]);
 
 
-  /**
-   * NUEVA LÓGICA: Calcula los horarios exactos de encendido/apagado para el día actual
-   * Basado en la hora fraccional de inicio y la longitud del ciclo.
-   */
+  // Horarios de Luz/Oscuridad del Día Actual
   const lightScheduleToday = useMemo(() => {
     // Horas absolutas desde el inicio (en el punto de inicio del día actual)
     const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
@@ -172,11 +169,18 @@ export default function App() {
       if (!isLight && isPrevLight && darkStartHour === -1) darkStartHour = h;
     }
 
-    const formatHour = (h) => (h % 24).toString().padStart(2, '0') + ':00';
+    // NUEVO FORMATO: Convertir hora militar a AM/PM
+    const formatHour = (h) => {
+        const militaryHour = Math.round(h % 24);
+        const date = new Date();
+        date.setHours(militaryHour, 0, 0, 0); // Establece la hora militar
+        // Usa toLocaleTimeString para obtener el formato AM/PM
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
     
     // Casos extremos
-    if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', isLight: false, lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
-    if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', isLight: true, lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
+    if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', isLight: false, lightStart: 'N/A', lightEnd: 'N/A', darkStart: formatHour(0), darkEnd: formatHour(24) };
+    if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', isLight: true, lightStart: formatHour(0), lightEnd: formatHour(24), darkStart: 'N/A', darkEnd: 'N/A' };
 
 
     let ls = 'N/A';
@@ -239,7 +243,9 @@ export default function App() {
     const nextChangeDate = new Date(now.getTime() + diffMs);
 
     const formattedDate = nextChangeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    const formattedTime = nextChangeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Formato AM/PM para el próximo cambio
+    const formattedTime = nextChangeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
     return {
         hoursToNextChange: hoursToNextChange,
@@ -264,22 +270,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
-  function handleImport(file) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const obj = JSON.parse(e.target.result);
-        if (obj.startDate) setStartDate(obj.startDate);
-        if (obj.hoursLight !== undefined) setHoursLight(Number(obj.hoursLight));
-        if (obj.hoursDark !== undefined) setHoursDark(Number(obj.hoursDark));
-        if (obj.durationDays !== undefined) setDurationDays(Number(obj.durationDays));
-      } catch (err) {
-        alert("Archivo inválido: " + err.message);
-      }
-    };
-    reader.readAsText(file);
-  }
+  // Se eliminó handleImport y el input de Importar JSON
 
   function resetDefaults() {
     const d = new Date(); d.setHours(0,0,0,0);
@@ -291,11 +282,9 @@ export default function App() {
   // === CLASES TAILWIND CSS MEJORADAS (Estética Final) ==============
   // =================================================================
 
-  // Ajustado a un color primario más vibrante (teal/cyan)
   const PRIMARY_COLOR = 'indigo'; 
   const ACCENT_COLOR = 'teal'; 
 
-  // Notar que se usan backticks (`) para clases dinámicas como en la línea 562 del error
   const INPUT_CLASS = `w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-800 
                        focus:ring-2 focus:ring-${PRIMARY_COLOR}-500 focus:border-${PRIMARY_COLOR}-500 
                        transition duration-200 ease-in-out shadow-sm`;
@@ -314,7 +303,8 @@ export default function App() {
 
   // Función de formato para la fecha de inicio
   const formatStartDate = (dateObj) => {
-    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // También se cambia a AM/PM aquí
+    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
   return (
@@ -370,11 +360,8 @@ export default function App() {
             </div>
 
             <div className="flex flex-wrap gap-3 mt-6 pt-5 border-t border-gray-200">
+              {/* Opción 'Importar JSON' Eliminada */}
               <button onClick={handleExport} className={PRIMARY_BUTTON_CLASS}>Exportar JSON</button>
-              <label className={SECONDARY_BUTTON_CLASS + " cursor-pointer"}>
-                Importar JSON
-                <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
-              </label>
               <button onClick={resetDefaults} className={TERTIARY_BUTTON_CLASS}>Restablecer Valores</button>
             </div>
           </div>
@@ -398,7 +385,7 @@ export default function App() {
             
             <div className="text-sm text-gray-700 space-y-3">
               <p className="font-medium">
-                ⏰ **Ahora:** <span className="text-gray-900 font-normal">{now.toLocaleTimeString()}</span>
+                ⏰ **Ahora:** <span className="text-gray-900 font-normal">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </p>
               
               <div className="flex justify-between items-center p-2 rounded-lg border border-gray-100 bg-gray-50">
@@ -422,7 +409,7 @@ export default function App() {
                   </p>
               </div>
 
-              {/* Horarios del Día Actual (NUEVA IMPLEMENTACIÓN) */}
+              {/* Horarios del Día Actual (AHORA EN AM/PM) */}
               <div className="pt-3 border-t border-gray-100">
                 <h3 className="font-bold text-gray-900 mb-2">Horario de Hoy:</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -477,6 +464,7 @@ export default function App() {
               <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="p-3 border-r text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-gray-50">Día</th>
+                  {/* Se mantiene el formato de 24h en la tabla para coherencia con la columna de hora */}
                   {Array.from({length:24}).map((_,h) => (
                     <th key={h} className="p-3 border-r text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
                   ))}
