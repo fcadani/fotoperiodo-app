@@ -476,28 +476,6 @@ export default function App() {
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
-
-              {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
-              <div>
-                <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-1 gap-3 text-white">
-                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-yellow-400 font-semibold block mb-1 text-base">ON (Inicio Luz):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
-                    
-                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">OFF (Fin Luz / Próx. Apagado):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
-                  </div>
-                  <div className="border border-indigo-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.darkStart}</div>
-                    
-                    <span className="text-emerald-400 font-semibold block mt-3 mb-1 text-base">ON (Fin Oscuridad / Próx. Encendido):</span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.darkEnd}</div>
-                  </div>
-                </div>
-                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
-              </div>
               {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
 
             </div>
