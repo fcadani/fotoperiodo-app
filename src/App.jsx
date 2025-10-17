@@ -89,13 +89,6 @@ Requisitos:
  * - Mantiene el Balance Energético (vs 12L/12D) y el calendario funcional.
  */
 
-/**
- * Fotoperiodo App — Módulo de Control (Versión de Máxima Robustez)
- * - Restaura el cálculo de 'lightScheduleToday' a una versión matemática robusta.
- * - Mantiene el Balance Energético (vs 12L/12D) y el calendario funcional.
- * - MODIFICACIÓN: Se agrega la fecha y hora completa de encendido/apagado en la sección Estado.
- */
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
 
@@ -117,23 +110,6 @@ function fmtDateTimeLocal(d) {
   const min = pad(d.getMinutes());
   return `${y}-${m}-${day}T${h}:${min}`;
 }
-
-// NUEVA FUNCIÓN DE FORMATO: HH:mm (DD/MM/YYYY)
-function formatAbsoluteHourToFullDateTime(absoluteHoursSinceStart, startDateObj) {
-    if (absoluteHoursSinceStart < 0 || !(startDateObj instanceof Date) || isNaN(startDateObj.getTime())) return 'N/A';
-    
-    const elapsedMs = absoluteHoursSinceStart * 3600000;
-    const date = new Date(startDateObj.getTime() + elapsedMs);
-    
-    // Formato 'HH:mm (DD/MM/YYYY)'
-    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${time} (${day}/${month}/${year})`;
-}
-
 
 export default function App() {
   // ---- State ----
@@ -274,18 +250,10 @@ export default function App() {
     const darkHours = Number(hoursDark);
 
     if (lightHours === 0) {
-      return { 
-        status: 'Oscuridad total', 
-        lightStart: 'N/A', lightEnd: 'N/A', lightStartFull: 'N/A', lightEndFull: 'N/A', 
-        darkStart: '00:00', darkEnd: '24:00', darkStartFull: 'N/A', darkEndFull: 'N/A',
-      };
+      return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', darkStart: '00:00', darkEnd: '24:00' };
     }
     if (darkHours === 0) {
-      return { 
-        status: 'Luz continua', 
-        lightStart: '00:00', lightEnd: '24:00', lightStartFull: 'N/A', lightEndFull: 'N/A',
-        darkStart: 'N/A', darkEnd: 'N/A', darkStartFull: 'N/A', darkEndFull: 'N/A',
-      };
+      return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: 'N/A', darkEnd: 'N/A' };
     }
 
     // 1. Determinar el inicio del ciclo actual
@@ -309,8 +277,14 @@ export default function App() {
     // 3. Formatear la hora absoluta a la hora local de 24h (HH:mm)
     const formatAbsoluteHourToLocalTime = (absoluteHoursSinceStart) => {
         if (absoluteHoursSinceStart < 0) return 'N/A';
+        
+        // Calcular el tiempo transcurrido en milisegundos
         const elapsedMs = absoluteHoursSinceStart * 3600000;
+        
+        // Crear una nueva fecha sumando el tiempo transcurrido a la fecha de inicio
         const date = new Date(startDateObj.getTime() + elapsedMs);
+        
+        // Formato HH:mm
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
@@ -319,12 +293,6 @@ export default function App() {
     
     const darkStartLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours);
     const darkEndLocal = formatAbsoluteHourToLocalTime(darkStartAbsoluteHours + darkHours);
-    
-    // NUEVOS CAMPOS: Fecha y hora completa
-    const lightStartFull = formatAbsoluteHourToFullDateTime(lightStartAbsoluteHours, startDateObj);
-    const lightEndFull = formatAbsoluteHourToFullDateTime(lightStartAbsoluteHours + lightHours, startDateObj);
-    const darkStartFull = formatAbsoluteHourToFullDateTime(darkStartAbsoluteHours, startDateObj);
-    const darkEndFull = formatAbsoluteHourToFullDateTime(darkStartAbsoluteHours + darkHours, startDateObj);
 
     // Los horarios se calculan para el ciclo completo, si un evento cae fuera del día actual (de 00:00 a 24:00),
     // la hora formateada mostrará la hora local del día anterior o siguiente, lo cual es correcto.
@@ -335,10 +303,6 @@ export default function App() {
       lightEnd: lightEndLocal,
       darkStart: darkStartLocal,
       darkEnd: darkEndLocal,
-      lightStartFull, 
-      lightEndFull,
-      darkStartFull,
-      darkEndFull
     };
   }, [hoursSinceStartNow, hoursLight, hoursDark, cycleLength, startDateObj]);
 
@@ -533,25 +497,14 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext.toFixed(2)} hrs</div>
               </div>
 
-              {/* NUEVA SECCIÓN DE HORARIO DETALLADO */}
-              <div className="pt-2">
+              <div>
                 <div className="text-xs text-gray-400">Horario **HOY** (Ciclo {cycleIndex + 1} de {cycleLength.toFixed(1)}h):</div>
-                
-                {/* Encendido (Luz) */}
-                <div className="mt-1">
-                  <span className="text-yellow-400 font-semibold text-sm">Luz Encendido:</span>
-                  <div className="font-mono text-white text-base">{lightScheduleToday.lightStartFull}</div>
+                <div className="text-sm grid grid-cols-2 gap-1 text-white">
+                  <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
+                  <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
                 </div>
-
-                {/* Apagado (Luz Fin / Oscuridad Inicio) */}
-                <div className="mt-1">
-                  <span className="text-indigo-400 font-semibold text-sm">Luz Apagado:</span>
-                  <div className="font-mono text-white text-base">{lightScheduleToday.lightEndFull}</div>
-                </div>
-                
-                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-2">*{lightScheduleToday.status}</p>}
+                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
-              {/* FIN NUEVA SECCIÓN DE HORARIO DETALLADO */}
             </div>
           </aside>
 
