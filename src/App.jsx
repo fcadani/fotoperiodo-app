@@ -10,387 +10,441 @@ Requisitos:
 - lucide-react para íconos (opcional)
 */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Sun, Moon, Download, Upload, RefreshCw } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
-function safeParseJSON(str, fallback) {
-  try { return JSON.parse(str); } catch (e) { return fallback; }
-}
-
-function fmtDateTimeLocal(d) {
-  if (!(d instanceof Date) || isNaN(d.getTime())) return "";
-  // local datetime-local format: YYYY-MM-DDTHH:mm
-  const pad = (n) => n.toString().padStart(2, "0");
-  const y = d.getFullYear();
-  const m = pad(d.getMonth() + 1);
-  const day = pad(d.getDate());
-  const h = pad(d.getHours());
-  const min = pad(d.getMinutes());
-  return `${y}-${m}-${day}T${h}:${min}`;
-}
-
 export default function App() {
-  // ---- State ----
   const [startDate, setStartDate] = useState(() => {
-    // default: today at 00:00 local
-    const d = new Date(); d.setHours(0,0,0,0);
-    return fmtDateTimeLocal(d);
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    return d.toISOString().slice(0,16);
   });
 
   const [hoursLight, setHoursLight] = useState(13);
   const [hoursDark, setHoursDark] = useState(14);
   const [durationDays, setDurationDays] = useState(60);
-
   const [now, setNow] = useState(new Date());
-  const [errorMsg, setErrorMsg] = useState("");
 
-  // ---- Load saved settings on mount ----
+  // load settings
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const obj = safeParseJSON(raw, null);
-    if (!obj) return;
-    if (obj.startDate) setStartDate(String(obj.startDate));
-    if (Number.isFinite(Number(obj.hoursLight))) setHoursLight(Number(obj.hoursLight));
-    if (Number.isFinite(Number(obj.hoursDark))) setHoursDark(Number(obj.hoursDark));
-    if (Number.isFinite(Number(obj.durationDays))) setDurationDays(Number(obj.durationDays));
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj.startDate) setStartDate(obj.startDate);
+        // Usar Number(value) || defaultValue para evitar NaN/undefined
+        if (obj.hoursLight !== undefined) setHoursLight(Number(obj.hoursLight) || 0);
+        if (obj.hoursDark !== undefined) setHoursDark(Number(obj.hoursDark) || 0);
+        if (obj.durationDays !== undefined) setDurationDays(Number(obj.durationDays) || 1);
+      }
+    } catch (e) {
+      console.warn("No se pudieron cargar los ajustes:", e);
+    }
   }, []);
 
-  // ---- Autosave (debounced simple) ----
+  // autosave
   useEffect(() => {
-    const payload = { startDate, hoursLight, hoursDark, durationDays };
-    // small debounce to avoid flooding localStorage on fast input
-    const id = setTimeout(() => {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); }
-      catch (e) { console.warn("No se pudo guardar en localStorage:", e); }
-    }, 300);
-    return () => clearTimeout(id);
+    const obj = { startDate, hoursLight, hoursDark, durationDays };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
   }, [startDate, hoursLight, hoursDark, durationDays]);
 
-  // ---- Tick ----
+  // tick every 30s so "current" updates
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000); // 30s
+    const id = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(id);
   }, []);
 
-  // ---- Validation helpers ----
-  const validateInputs = useCallback(() => {
-    setErrorMsg("");
-    if (!startDate) { setErrorMsg("La fecha de inicio es requerida."); return false; }
-    const d = new Date(startDate);
-    if (isNaN(d.getTime())) { setErrorMsg("Formato de fecha inválido."); return false; }
-    if (!Number.isFinite(Number(hoursLight)) || Number(hoursLight) < 0) { setErrorMsg("Horas de luz inválidas."); return false; }
-    if (!Number.isFinite(Number(hoursDark)) || Number(hoursDark) < 0) { setErrorMsg("Horas de oscuridad inválidas."); return false; }
-    if (!Number.isFinite(Number(durationDays)) || Number(durationDays) < 1) { setErrorMsg("Duración debe ser >= 1 día."); return false; }
-    return true;
-  }, [startDate, hoursLight, hoursDark, durationDays]);
+  const cycleLength = useMemo(() => {
+    const light = Number(hoursLight) || 0;
+    const dark = Number(hoursDark) || 0;
+    return Math.max(0.0001, light + dark);
+  }, [hoursLight, hoursDark]);
 
-  // ---- Computed values ----
   const startDateObj = useMemo(() => {
     const d = new Date(startDate);
-    if (isNaN(d.getTime())) return new Date();
+    if (isNaN(d.getTime())) {
+      const fallback = new Date(); fallback.setHours(0,0,0,0); return fallback;
+    }
     return d;
   }, [startDate]);
-
-  const cycleLength = useMemo(() => {
-    const sum = Number(hoursLight) + Number(hoursDark);
-    return sum > 0 ? sum : 0.0000001; // avoid zero division
-  }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
-  // hours since start (now)
-  const hoursSinceStartNow = useMemo(() => {
-    return (now.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
-  }, [now, startDateObj]);
-
-  const currentInCycle = useMemo(() => {
-    return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
-  }, [hoursSinceStartNow, cycleLength]);
-
-  const isNowLight = useMemo(() => {
-    return currentInCycle < Number(hoursLight);
-  }, [currentInCycle, hoursLight]);
-
-  const currentDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / 24), [hoursSinceStartNow]);
-  const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
-
-  // given an absolute hoursSinceStart value determine if L or D
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
   }
 
-  // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
-    const rows = [];
-    const days = clamp(Number(durationDays) || 0, 1, 9999);
-    for (let d = 0; d < days; d++) {
-      const row = [];
+    const days = [];
+    for (let d = 0; d < durationDays; d++) {
+      const dayRow = [];
       for (let h = 0; h < 24; h++) {
-        // compute hours since start for this cell
-        // cellTime = startDateObj + ((d * 24 + h) - fractionalStartOffset) hours
-        const hoursSinceStart = d * 24 + h - fractionalStartOffset;
-        row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
+        const hoursSinceStart = d * 24 + h - fractionalStartOffset; 
+        dayRow.push(isLightAtAbsoluteHours(hoursSinceStart));
       }
-      rows.push(row);
+      days.push(dayRow);
     }
-    return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
+    return days;
+  }, [durationDays, cycleLength, fractionalStartOffset, hoursLight]);
 
-  // ---- determine today's schedule (approx) ----
+  const hoursSinceStartNow = useMemo(() => {
+    const diffMs = now.getTime() - startDateObj.getTime();
+    return diffMs / (1000 * 60 * 60);
+  }, [now, startDateObj]);
+
+  const currentInCycle = useMemo(() => {
+    const raw = ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
+    return raw;
+  }, [hoursSinceStartNow, cycleLength]);
+
+  const isNowLight = useMemo(() => isLightAtAbsoluteHours(hoursSinceStartNow), [hoursSinceStartNow, cycleLength]);
+
+  const currentDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / 24), [hoursSinceStartNow]);
+  const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
+
+  // =================================================================
+  // === CÁLCULOS PRINCIPALES (CORREGIDO: Manejo de NaN/undefined) ====
+  // =================================================================
+
+  const daysSinceStart = useMemo(() => {
+    const constDiffMs = now.getTime() - startDateObj.getTime();
+    const diffDays = constDiffMs / (1000 * 60 * 60 * 24);
+    return Math.floor(diffDays);
+  }, [now, startDateObj]);
+
+  const lightSaving = useMemo(() => {
+    const daysElapsed = Math.max(0, daysSinceStart);
+    const standardLightHours = 12; 
+    const savingPerHour = standardLightHours - (Number(hoursLight) || 0); 
+    const rawTotalSaving = savingPerHour * daysElapsed;
+
+    // CORRECCIÓN: Asegura que totalSaving es un número (0 si es NaN)
+    const totalSaving = rawTotalSaving || 0; 
+
+    return { totalSaving: totalSaving };
+  }, [daysSinceStart, hoursLight]);
+
+
   const lightScheduleToday = useMemo(() => {
-    // We'll search within today's 24 hours for transitions
-    const dayIndex = currentDayIndex;
-    const dayStartHoursSinceStart = dayIndex * 24 - fractionalStartOffset;
-    let firstLight = -1;
-    let firstDark = -1;
+    const currentDayStartHoursSinceStart = currentDayIndex * 24 - fractionalStartOffset;
+    
+    let lightStartHour = -1;
+    let darkStartHour = -1;
+    
     for (let h = 0; h < 24; h++) {
-      const hrs = dayStartHoursSinceStart + h;
-      const nowLight = isLightAtAbsoluteHours(hrs);
-      const prevLight = isLightAtAbsoluteHours(hrs - 0.5); // check slightly before
-      if (nowLight && !prevLight && firstLight === -1) firstLight = h;
-      if (!nowLight && prevLight && firstDark === -1) firstDark = h;
+      const hoursAbsolute = currentDayStartHoursSinceStart + h;
+      const isLight = isLightAtAbsoluteHours(hoursAbsolute);
+      const isPrevLight = isLightAtAbsoluteHours(hoursAbsolute - 1);
+
+      if (isLight && !isPrevLight && lightStartHour === -1) lightStartHour = h;
+      if (!isLight && isPrevLight && darkStartHour === -1) darkStartHour = h;
     }
 
-    const fmt = (hour) => {
-      if (hour === -1) return "--:--";
-      const d = new Date(startDateObj.getTime());
-      // set to the day's midnight + hour
-      d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (dayIndex * 24 + hour) * 3600000);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatHour = (h) => {
+        const militaryHour = Math.round(h % 24);
+        const date = new Date();
+        date.setHours(militaryHour, 0, 0, 0); 
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     };
+    
+    if (Number(hoursLight) === 0) return { status: 'Oscuridad total (24D)', lightStart: 'N/A', lightEnd: 'N/A', darkStart: formatHour(0), darkEnd: formatHour(24) };
+    if (Number(hoursDark) === 0) return { status: 'Luz total (24L)', lightStart: formatHour(0), lightEnd: formatHour(24), darkStart: 'N/A', darkEnd: 'N/A' };
 
-    if (Number(hoursLight) === 0) return { status: 'Oscuridad total', lightStart: '--', lightEnd: '--', darkStart: '00:00', darkEnd: '24:00' };
-    if (Number(hoursDark) === 0) return { status: 'Luz continua', lightStart: '00:00', lightEnd: '24:00', darkStart: '--', darkEnd: '--' };
 
-    // compute approximate intervals
-    const ls = firstLight === -1 ? '--:--' : fmt(firstLight);
-    const le = firstLight === -1 ? '--:--' : fmt(firstLight + Number(hoursLight));
-    const ds = firstDark === -1 ? '--:--' : fmt(firstDark);
-    const de = firstDark === -1 ? '--:--' : fmt(firstDark + Number(hoursDark));
+    let ls = 'N/A';
+    let le = 'N/A';
+    let ds = 'N/A';
+    let de = 'N/A';
 
-    return { status: null, lightStart: ls, lightEnd: le, darkStart: ds, darkEnd: de };
-  }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark, startDateObj]);
-
-  // ---- next change event ----
-  const nextChangeEvent = useMemo(() => {
-    // compute hours remaining until next state flip
-    let hoursToNext;
-    let nextState;
-    if (isNowLight) {
-      hoursToNext = Number(hoursLight) - currentInCycle;
-      nextState = 'Oscuridad';
+    if (lightStartHour !== -1) {
+        ls = formatHour(lightStartHour);
+        le = formatHour(lightStartHour + Number(hoursLight));
     } else {
-      // if currently dark, remaining = cycleLength - currentInCycle
-      hoursToNext = cycleLength - currentInCycle;
-      nextState = 'Luz';
+        if (darkStartHour !== -1) {
+             le = formatHour(darkStartHour);
+             ls = formatHour(darkStartHour - Number(hoursLight));
+        }
     }
-    if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
-    const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
+    
+    if (darkStartHour !== -1) {
+        ds = formatHour(darkStartHour);
+        de = formatHour(darkStartHour + Number(hoursDark));
+    } else {
+        if (lightStartHour !== -1) {
+             de = formatHour(lightStartHour);
+             ds = formatHour(lightStartHour - Number(hoursDark));
+        }
+    }
+
     return {
-      hoursToNext: hoursToNext,
-      date: nextDate.toLocaleDateString(),
-      time: nextDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      nextState,
-      action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
+        lightStart: ls,
+        lightEnd: le,
+        darkStart: ds,
+        darkEnd: de,
+        status: null,
     };
-  }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
+    
+  }, [currentDayIndex, fractionalStartOffset, hoursLight, hoursDark]);
 
-  // ---- export / import / reset ----
-  const handleExport = useCallback(() => {
-    const payload = { startDate, hoursLight, hoursDark, durationDays };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'fotoperiodo-config.json'; a.click();
-    URL.revokeObjectURL(url);
-  }, [startDate, hoursLight, hoursDark, durationDays]);
+  const nextChangeEvent = useMemo(() => {
+    let rawHoursToNextChange;
+    let nextState;
 
-  const handleImport = useCallback((file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const obj = JSON.parse(e.target.result);
-        if (obj.startDate) setStartDate(String(obj.startDate));
-        if (Number.isFinite(Number(obj.hoursLight))) setHoursLight(Number(obj.hoursLight));
-        if (Number.isFinite(Number(obj.hoursDark))) setHoursDark(Number(obj.hoursDark));
-        if (Number.isFinite(Number(obj.durationDays))) setDurationDays(Number(obj.durationDays));
-      } catch (err) {
-        alert('Archivo inválido o con formato incorrecto.');
-      }
+    if (isNowLight) {
+        const hoursInLightPeriod = currentInCycle;
+        const hoursRemainingInLight = (Number(hoursLight) || 0) - hoursInLightPeriod;
+        rawHoursToNextChange = hoursRemainingInLight;
+        nextState = 'Oscuridad';
+    } else {
+        const hoursInDarkPeriod = currentInCycle - (Number(hoursLight) || 0);
+        const hoursRemainingInDark = (Number(hoursDark) || 0) - hoursInDarkPeriod;
+        rawHoursToNextChange = hoursRemainingInDark;
+        nextState = 'Luz';
+    }
+
+    // CORRECCIÓN: Asegura que hoursToNextChange es un número válido y no negativo
+    const hoursToNextChange = Math.max(0, rawHoursToNextChange || 0);
+    
+    const diffMs = hoursToNextChange * (1000 * 60 * 60);
+    const nextChangeDate = new Date(now.getTime() + diffMs);
+
+    const formattedDate = nextChangeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const formattedTime = nextChangeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    return {
+        hoursToNextChange: hoursToNextChange,
+        date: formattedDate,
+        time: formattedTime,
+        nextState: nextState,
+        action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
     };
-    reader.readAsText(file);
-  }, []);
+  }, [now, isNowLight, currentInCycle, hoursLight, hoursDark]);
 
-  const resetDefaults = useCallback(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
-    setStartDate(fmtDateTimeLocal(d));
-    setHoursLight(13); setHoursDark(14); setDurationDays(60);
-  }, []);
 
-  // ---- small UI helpers ----
-  const formatStartDate = useCallback((dObj) => {
-    if (!dObj || isNaN(dObj.getTime())) return '--';
-    return dObj.toLocaleString();
-  }, []);
+  // =================================================================
+  // === CLASES TAILWIND CSS (ALTO CONTRASTE / SIN BORDES) ============
+  // =================================================================
 
-  // run validation to show errors early
-  useEffect(() => { validateInputs(); }, [validateInputs]);
+  const PRIMARY_COLOR = 'blue'; 
+  const ACCENT_COLOR = 'green';  
 
-  // ---- JSX ----
+  // Input: Sin fondo, solo borde inferior gris claro y focus azul.
+  const INPUT_CLASS = `w-full p-2.5 border-b border-gray-300 rounded-none bg-white text-gray-800 
+                       focus:ring-0 focus:border-b-2 focus:border-${PRIMARY_COLOR}-500 transition duration-200 shadow-none text-base`;
+  
+  // Tarjeta: Sin bordes, sin sombras, fondo blanco.
+  const CARD_CLASS = `p-6 bg-white transition duration-300`;
+
+  // Títulos: Gruesos, alto contraste, solo borde inferior sutil.
+  const TITLE_CLASS = `text-2xl font-extrabold mb-4 pb-3 border-b border-gray-200 text-gray-900`;
+
+
+  const formatStartDate = (dateObj) => {
+    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-100 to-slate-300 dark:from-slate-900 dark:to-slate-800 p-4">
-      <div className="w-full max-w-5xl bg-white dark:bg-slate-900/70 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all">
-
-        <header className="text-center mb-6">
-          <div className="flex justify-center gap-4 mb-3">
-            <div className="p-2 rounded-lg bg-yellow-50"><Sun className="w-6 h-6 text-yellow-500" /></div>
-            <div className="p-2 rounded-lg bg-indigo-50"><Moon className="w-6 h-6 text-indigo-500" /></div>
-          </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">Fotoperiodo — Control de Ciclos</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">Configura cualquier fotoperiodo y visualizá el calendario</p>
+    // Fondo blanco puro. Flex para centrar verticalmente si el contenido es corto.
+    <div className="min-h-screen bg-white text-gray-900 font-sans flex justify-center w-full">
+      
+      {/* Contenedor principal: Centrado, ancho fijo (simula tarjeta de app) */}
+      <div className="max-w-4xl w-full p-4 sm:p-8">
+        
+        <header className="mb-8 pt-4 pb-2 text-center">
+          <h1 className={`text-4xl font-extrabold tracking-tight text-gray-900`}>
+            Fotoperiodo | Módulo de Control
+          </h1>
+          <p className="text-base text-gray-500 mt-2">
+            Visualización y ajuste de ciclos de luz/oscuridad para fotoperiodo.
+          </p>
         </header>
 
-        <main className="grid lg:grid-cols-3 gap-6">
+        <section className="grid lg:grid-cols-3 gap-6 mb-8">
+          
+          {/* Configuración */}
+          <div className={`${CARD_CLASS} lg:col-span-2 border-b lg:border-r lg:border-b-0 border-gray-200`}>
+            <h2 className={TITLE_CLASS}>
+              Configuración del Ciclo
+            </h2>
+            
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha y Hora de Inicio
+            </label>
+            <input
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={INPUT_CLASS}
+            />
 
-          {/* Configuration */}
-          <section className="lg:col-span-2 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-            <h2 className="text-lg font-semibold mb-3">Configuración</h2>
-
-            <div className="grid gap-3">
-              <label className="text-sm text-gray-700">Fecha y hora de inicio</label>
-              <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-indigo-300" />
-
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-sm text-gray-700">Horas luz (h)</label>
-                  <input type="number" min="0" step="0.5" value={hoursLight}
-                    onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-yellow-300" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">Horas oscuridad (h)</label>
-                  <input type="number" min="0" step="0.5" value={hoursDark}
-                    onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-indigo-300" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">Duración (días)</label>
-                  <input type="number" min="1" max="9999" value={durationDays}
-                    onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
-                    className="w-full p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-indigo-300" />
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-2">
-                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow"> <Download className="w-4 h-4"/> Exportar</button>
-
-                <label className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-lg cursor-pointer">
-                  <Upload className="w-4 h-4"/> Importar
-                  <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
-                </label>
-
-                <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg"> <RefreshCw className="w-4 h-4"/> Reset</button>
-
-                <div className="ml-auto text-xs text-gray-500">Guardado local automático</div>
-              </div>
-
-              {errorMsg && <div className="text-sm text-red-600 mt-2">{errorMsg}</div>}
-            </div>
-          </section>
-
-          {/* Status */}
-          <aside className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-700">
-            <h3 className="text-lg font-semibold mb-3">Estado</h3>
-
-            <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+            <div className="grid sm:grid-cols-3 gap-6 mt-6">
               <div>
-                <div className="text-xs text-gray-500">Inicio:</div>
-                <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horas Luz (L)</label>
+                <input type="number" min="0" step="0.5" value={hoursLight}
+                  onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
+                  className={INPUT_CLASS} />
               </div>
-
               <div>
-                <div className="text-xs text-gray-500">Días de cultivo:</div>
-                <div className="text-2xl font-extrabold">{Math.max(0, Math.floor((now - startDateObj) / (1000*60*60*24)))}</div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horas Oscuridad (D)</label>
+                <input type="number" min="0" step="0.5" value={hoursDark}
+                  onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
+                  className={INPUT_CLASS} />
               </div>
-
               <div>
-                <div className="text-xs text-gray-500">Hora actual:</div>
-                <div className="font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-              </div>
-
-              <div>
-                <div className="text-xs text-gray-500">Estado del ciclo:</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${isNowLight ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{isNowLight ? 'LUZ' : 'OSCURIDAD'}</div>
-              </div>
-
-              <div>
-                <div className="text-xs text-gray-500">Próximo evento:</div>
-                <div className="font-semibold">{nextChangeEvent.nextState} — {nextChangeEvent.time}</div>
-                <div className="text-xs text-gray-500">En {nextChangeEvent.hoursToNextChange.toFixed(2)} horas</div>
-              </div>
-
-              <div>
-                <div className="text-xs text-gray-500">Horario aproximado hoy:</div>
-                <div className="text-sm grid grid-cols-2 gap-2">
-                  <div><span className="text-green-600 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
-                  <div><span className="text-indigo-600 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duración Total (días)</label>
+                <input type="number" min="1" max="9999" value={durationDays}
+                  onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
+                  className={INPUT_CLASS} />
               </div>
             </div>
-          </aside>
+            
+          </div>
 
-          {/* Calendar full width below */}
-          <section className="lg:col-span-3 mt-4 bg-white dark:bg-slate-900 p-0 rounded-xl border border-gray-100 dark:border-slate-700 overflow-auto">
-            <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-              <h4 className="font-semibold">Calendario (Día × Hora)</h4>
-              <div className="text-sm text-gray-500">{durationDays} días</div>
+          {/* Estado actual y Ahorro */}
+          <div className={CARD_CLASS}>
+            <h2 className={TITLE_CLASS}>
+              Estado y Control
+            </h2>
+            
+            {/* Días transcurridos y fecha de inicio */}
+            <div className="text-base text-gray-600 mb-4 pb-4 border-b border-gray-200">
+                <p className="font-semibold text-gray-900 text-sm mb-1">Inicio del Ciclo:</p>
+                <span className={`text-lg font-mono text-gray-800`}>{formatStartDate(startDateObj)}</span>
+                
+                <p className="font-semibold text-gray-900 flex items-center mt-3">
+                    Días de Cultivo: 
+                    <span className={`text-4xl font-extrabold font-mono text-${PRIMARY_COLOR}-600 ml-2 leading-none`}>
+                        {Math.max(0, daysSinceStart)}
+                    </span>
+                </p>
+            </div>
+            
+            <div className="text-sm text-gray-600 space-y-4">
+              <p className="font-mono text-sm flex justify-between items-center pb-2 border-b border-gray-200">
+                <span className="text-gray-600">Hora Actual:</span> 
+                <span className={`text-xl font-bold text-${PRIMARY_COLOR}-600`}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+              </p>
+              
+              {/* Indicador de Estado LUZ/OSCURIDAD */}
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                  <span className="font-medium text-sm text-gray-600">Estado Actual:</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${isNowLight 
+                    ? `bg-green-100 text-green-700` 
+                    : `bg-indigo-100 text-indigo-700`}`}>
+                    {isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}
+                  </span>
+              </div>
+              
+              {/* Progreso (Próximo Cambio) */}
+              <div className={`font-semibold py-2 border-b border-gray-200`}>
+                  <p className="text-xs text-gray-500 mb-1">Próximo Evento ({nextChangeEvent.action}):</p>
+                  <span className={`text-gray-800 text-xl font-bold font-mono`}>
+                    {nextChangeEvent.time}
+                  </span>
+                  <span className="text-gray-500 text-sm ml-1">
+                    del {nextChangeEvent.date}
+                  </span>
+                  <p className="text-xs text-gray-600 mt-1">
+                     {/* CORRECCIÓN: Usa el valor seguro antes de toFixed() */}
+                     (Tiempo restante: {(nextChangeEvent.hoursToNextChange || 0).toFixed(2)} hrs)
+                  </p>
+              </div>
+
+              {/* Horarios del Día Actual */}
+              <div className="pt-2">
+                <h3 className="font-bold text-gray-800 text-sm mb-2">Horario de Hoy:</h3>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div><span className="text-green-600">LUZ:</span> <strong className="text-gray-900">{lightScheduleToday.lightStart}</strong> a <strong className="text-gray-900">{lightScheduleToday.lightEnd}</strong></div>
+                  <div><span className="text-indigo-600">OSCURIDAD:</span> <strong className="text-gray-900">{lightScheduleToday.darkStart}</strong> a <strong className="text-gray-900">{lightScheduleToday.darkEnd}</strong></div>
+                </div>
+                {lightScheduleToday.status && <p className="text-xs text-red-500 mt-1">*{lightScheduleToday.status}</p>}
+              </div>
+
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs">
-                <thead className="bg-white dark:bg-slate-900 sticky top-0">
-                  <tr>
-                    <th className="p-2 text-left sticky left-0 bg-white dark:bg-slate-900">Día</th>
-                    {Array.from({length:24}).map((_,h) => (
-                      <th key={h} className="p-2 text-center">{h}h</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {calendar.map((row, d) => (
-                    <tr key={d} className={`${d === currentDayIndex ? 'bg-yellow-50' : ''}`}>
-                      <td className={`p-1 sticky left-0 bg-white dark:bg-slate-900 text-sm font-semibold`}>{d+1}</td>
-                      {row.map((isLight, h) => {
-                        const isCurrent = d === currentDayIndex && h === currentHourIndex;
-                        return (
-                          <td key={h} className="p-0.5">
-                            <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold transition-all ${isLight ? 'bg-yellow-100 text-yellow-800' : 'bg-indigo-100 text-indigo-800'} ${isCurrent ? 'ring-2 ring-red-400 shadow-lg' : ''}`}>
-                              {isLight ? 'L' : 'D'}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
+            {/* SECCIÓN DE AHORRO */}
+            <div className="mt-6 pt-5 border-t border-gray-200">
+              <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético (vs 12L/12D)</h3>
+              
+              <div className="p-3 bg-gray-50">
+                <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas:</p>
+                <p className="text-3xl font-extrabold mt-1 font-mono">
+                    <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                        {/* CORRECCIÓN: Usa el valor seguro antes de toFixed() */}
+                        {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(1)} 
+                    </span>
+                    <span className="text-base text-gray-500 font-normal ml-1">horas</span>
+                </p>
+                
+                <p className="text-xs text-gray-600 mt-2">
+                    {lightSaving.totalSaving > 0 
+                        ? 'Ahorro (Menos horas que el ciclo estándar).'
+                        : (lightSaving.totalSaving < 0 
+                            ? 'Gasto Extra (Más horas que el ciclo estándar).'
+                            : 'Uso Estándar (Exactamente 12 horas de luz).'
+                        )
+                    }
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Calendario */}
+        <section className={`${CARD_CLASS} p-0 overflow-hidden`}>
+          <div className={`flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50`}>
+            <h2 className={`text-xl font-bold text-gray-800`}>
+              Visualización por Ciclos (Día × Hora)
+            </h2>
+            <div className="text-xs text-gray-500">
+              {durationDays} días de monitoreo
+            </div>
+          </div>
+
+          <div className="overflow-x-auto border-t border-gray-200">
+            <table className="min-w-full text-xs divide-y divide-gray-200">
+              <thead className="bg-white sticky top-0 z-10 border-b border-gray-200">
+                <tr>
+                  <th className={`p-2 border-r border-gray-200 text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-white`}>Día #</th>
+                  {Array.from({length:24}).map((_,h) => (
+                    <th key={h} className="p-2 border-r border-gray-300 text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {calendar.map((row, d) => (
+                  <tr key={d} className={`transition duration-100 ${d === currentDayIndex ? 'bg-yellow-50/50 border-l-2 border-l-yellow-400' : 'hover:bg-gray-50'}`}>
+                    <td className={`p-2 border-r border-gray-200 text-xs font-bold text-gray-800 sticky left-0 ${d === currentDayIndex ? 'bg-yellow-50/50' : 'bg-white'}`}>{d+1}</td>
+                    {row.map((isLight, h) => {
+                      const isCurrentCell = d === currentDayIndex && h === currentHourIndex;
+                      const cellClass = isLight 
+                        ? 'bg-yellow-100 text-yellow-800 border-yellow-200' // LUZ 
+                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'; // OSCURIDAD 
 
-            <div className="p-3 text-xs text-gray-500 border-t border-gray-100">Leyenda: L = Luz, D = Oscuridad. Celda actual resaltada.</div>
-          </section>
+                      return (
+                        <td key={h} className={`p-0.5 border-r border-gray-300 text-center align-middle`}>
+                          <div className={`w-full h-6 flex items-center justify-center text-xs font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-2 ring-red-500 shadow-lg z-20' : ''} transition-all duration-100 ease-in-out font-mono`}>
+                            {isLight ? 'L' : 'D'}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        </main>
+          <footer className="mt-3 p-4 text-xs text-gray-500 border-t border-gray-200">
+            Leyenda: L (Luz) / D (Oscuridad). La celda actual se resalta con un borde rojo.
+          </footer>
+        </section>
 
       </div>
     </div>
