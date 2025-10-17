@@ -1,10 +1,10 @@
 /**
 Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
-- Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
-- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- CORRECCIÓN CLAVE: Se corrige y simplifica la lógica de fechas y horas en 'lightScheduleToday' para que los horarios ON/OFF coincidan exactamente con 'Próximo Evento' al cruzar la medianoche, centrándose solo en la fase de LUZ (ON/OFF).
-- MEJORA: El bloque de Horario HOY se unifica en una sola tarjeta con etiquetas dinámicas.
+- Enfocado en el Super Ciclo (Fotoperiodos Alternativos).
+- Se elimina el ajuste de 23:00h en startDate y resetDefaults para que el Día 1 comience
+  exactamente a la hora seleccionada (hora de escritorio).
+- Etiquetas mejoradas para centrar el foco en 'Ciclos Completos' vs 'Tiempo Transcurrido (24h)'.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -32,12 +32,13 @@ function fmtDateTimeLocal(d) {
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
+    // Inicialización simple: Día actual a las 00:00h (hora de escritorio)
     const d = new Date(); d.setHours(0,0,0,0);
     return fmtDateTimeLocal(d);
   });
 
-  const [hoursLight, setHoursLight] = useState(13);
-  const [hoursDark, setHoursDark] = useState(14);
+  const [hoursLight, setHoursLight] = useState(13); // Ejemplo de ciclo alternativo
+  const [hoursDark, setHoursDark] = useState(14); // Ejemplo de ciclo alternativo
   const [durationDays, setDurationDays] = useState(60);
 
   const [now, setNow] = useState(new Date());
@@ -285,9 +286,12 @@ export default function App() {
   }, []);
 
   const resetDefaults = useCallback(() => {
+    // Restablece la fecha al inicio del día actual (00:00) para un acoplamiento simple con el escritorio
     const d = new Date(); d.setHours(0,0,0,0);
     setStartDate(fmtDateTimeLocal(d));
-    setHoursLight(13); setHoursDark(14); setDurationDays(60);
+    setHoursLight(13); 
+    setHoursDark(14); // Valores por defecto no-24h
+    setDurationDays(60);
   }, []);
 
   // ---- small UI helpers ----
@@ -381,18 +385,20 @@ export default function App() {
               {/* Días de Cultivo y VS 24h con estilos distintivos */}
               <div className="border-b border-slate-700 pb-2 grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">DÍAS SUPER CICLO</div>
+                    {/* ETIQUETA MEJORADA para tu métrica principal */}
+                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">CICLOS COMPLETOS (#)</div>
                     <div className="font-extrabold text-3xl text-red-400 drop-shadow-lg">
                         {Math.max(0, customCycleDayIndex)}
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">(Ciclos completos de {cycleLength.toFixed(1)}h)</div>
+                    <div className="text-xs text-gray-400 mt-1">(Ciclos de {cycleLength.toFixed(1)}h)</div>
                   </div>
                   <div className="text-right">
-                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO</div>
+                       {/* ETIQUETA MEJORADA para la referencia de 24h */}
+                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO (24h)</div>
                       <div className="font-mono text-xl text-white mt-1">
                           {formattedTimeElapsed.display}
                       </div>
-                       <div className="text-xs text-gray-400 mt-1">(Equivalente en días 24h)</div>
+                       <div className="text-xs text-gray-400 mt-1">(Días, horas, minutos del reloj)</div>
                   </div>
               </div>
               {/* FIN Días de Cultivo y Superciclo */}
@@ -425,7 +431,6 @@ export default function App() {
               </div>
 
               {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
-              {/* ESTE ES EL BLOQUE ÚNICO SOLICITADO */}
               <div>
                 <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
                 <div className="text-sm grid grid-cols-1 gap-3 text-white">
