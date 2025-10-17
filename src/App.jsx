@@ -28,10 +28,9 @@ function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
 export default function App() {
   const [startDate, setStartDate] = useState(() => {
-    // default today at 00:00
     const d = new Date();
     d.setHours(0,0,0,0);
-    return d.toISOString().slice(0,16); // yyyy-mm-ddThh:mm for input[type=datetime-local]
+    return d.toISOString().slice(0,16);
   });
 
   const [hoursLight, setHoursLight] = useState(13);
@@ -69,7 +68,6 @@ export default function App() {
 
   const cycleLength = useMemo(() => Math.max(0.0001, Number(hoursLight) + Number(hoursDark)), [hoursLight, hoursDark]);
 
-  // parse startDate string into Date
   const startDateObj = useMemo(() => {
     const d = new Date(startDate);
     if (isNaN(d.getTime())) {
@@ -78,18 +76,15 @@ export default function App() {
     return d;
   }, [startDate]);
 
-  // fractional offset in hours between the startDate time and midnight: used for precise alignment
   const fractionalStartOffset = useMemo(() => {
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
-  // helper to compute whether a given absolute hour (hours since start) is light
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
   }
 
-  // build calendar grid data
   const calendar = useMemo(() => {
     const days = [];
     for (let d = 0; d < durationDays; d++) {
@@ -103,7 +98,6 @@ export default function App() {
     return days;
   }, [durationDays, cycleLength, fractionalStartOffset, hoursLight]);
 
-  // current position in hours since start
   const hoursSinceStartNow = useMemo(() => {
     const diffMs = now.getTime() - startDateObj.getTime();
     return diffMs / (1000 * 60 * 60);
@@ -233,21 +227,21 @@ export default function App() {
 
 
   // =================================================================
-  // === CLASES TAILWIND CSS (MINIMALISTA DARK MODE) ==================
+  // === CLASES TAILWIND CSS (MINIMALISTA LIGHT MODE) ==================
   // =================================================================
 
-  const PRIMARY_COLOR = 'yellow'; // Acento principal para datos clave (ej. hora)
+  const PRIMARY_COLOR = 'blue'; // Acento principal como el ejemplo
   const ACCENT_COLOR = 'green';  // Acento para ahorro positivo
 
-  // Input de estilo minimalista en Dark Mode
-  const INPUT_CLASS = `w-full p-2.5 border-b border-gray-600 rounded-none bg-gray-700 text-white 
-                       focus:ring-0 focus:border-white transition duration-200 ease-in-out shadow-none text-sm`;
+  // Input de estilo minimalista Light Mode con borde sutil
+  const INPUT_CLASS = `w-full p-2.5 border border-gray-300 rounded-md bg-white text-gray-800 
+                       focus:ring-2 focus:ring-${PRIMARY_COLOR}-500 focus:border-${PRIMARY_COLOR}-500 transition duration-200 shadow-sm text-sm`;
   
-  // Tarjeta minimalista sin sombra, con bordes sutiles
-  const CARD_CLASS = `p-5 bg-gray-800 rounded-lg border border-gray-700 transition duration-300`;
+  // Tarjeta flotante (blanca)
+  const CARD_CLASS = `p-5 bg-white rounded-lg border border-gray-200 shadow-xl transition duration-300`;
 
-  // Títulos de sección minimalistas
-  const TITLE_CLASS = `text-xl font-bold mb-4 pb-2 border-b border-gray-700 text-white`;
+  // Títulos de sección
+  const TITLE_CLASS = `text-xl font-bold mb-4 pb-2 border-b border-gray-200 text-gray-800`;
 
 
   const formatStartDate = (dateObj) => {
@@ -255,11 +249,11 @@ export default function App() {
   }
 
   return (
-    // Fondo oscuro total
-    <div className="min-h-screen bg-gray-900 text-gray-300 p-6 font-sans">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-8 pt-4 pb-2 text-center border-b border-gray-700">
-          <h1 className={`text-3xl font-extrabold tracking-wider text-white`}>
+    // Fondo gris claro, centrado
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-6 font-sans flex justify-center items-start pt-10">
+      <div className="max-w-4xl w-full">
+        <header className="mb-8 pt-4 pb-2 text-center">
+          <h1 className={`text-3xl font-extrabold tracking-wider text-gray-800`}>
             Fotoperiodo | Módulo de Control
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -275,7 +269,7 @@ export default function App() {
               Configuración del Ciclo
             </h2>
             
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">
               Fecha y Hora de Inicio
             </label>
             <input
@@ -287,26 +281,24 @@ export default function App() {
 
             <div className="grid sm:grid-cols-3 gap-4 mt-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Horas Luz (L)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Horas Luz (L)</label>
                 <input type="number" min="0" step="0.5" value={hoursLight}
                   onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
                   className={INPUT_CLASS} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Horas Oscuridad (D)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Horas Oscuridad (D)</label>
                 <input type="number" min="0" step="0.5" value={hoursDark}
                   onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
                   className={INPUT_CLASS} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Duración Total (días)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Duración Total (días)</label>
                 <input type="number" min="1" max="9999" value={durationDays}
                   onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
                   className={INPUT_CLASS} />
               </div>
             </div>
-
-            {/* NOTA: Botones de Exportar/Importar/Reiniciar ELIMINADOS */}
           </div>
 
           {/* Estado actual y Ahorro */}
@@ -316,38 +308,38 @@ export default function App() {
             </h2>
             
             {/* Días transcurridos y fecha de inicio */}
-            <div className="text-sm text-gray-400 mb-4 pb-3 border-b border-gray-700">
-                <p className="font-semibold text-gray-300 text-xs mb-1">Inicio del Ciclo:</p>
-                <span className={`text-base font-mono text-gray-200`}>{formatStartDate(startDateObj)}</span>
+            <div className="text-sm text-gray-500 mb-4 pb-3 border-b border-gray-200">
+                <p className="font-semibold text-gray-700 text-xs mb-1">Inicio del Ciclo:</p>
+                <span className={`text-base font-mono text-gray-800`}>{formatStartDate(startDateObj)}</span>
                 
-                <p className="font-semibold text-gray-300 flex items-center mt-3">
+                <p className="font-semibold text-gray-700 flex items-center mt-3">
                     Días de Cultivo: 
-                    <span className={`text-3xl font-extrabold font-mono text-white ml-2 leading-none`}>
+                    <span className={`text-3xl font-extrabold font-mono text-${PRIMARY_COLOR}-600 ml-2 leading-none`}>
                         {Math.max(0, daysSinceStart)}
                     </span>
                 </p>
             </div>
             
-            <div className="text-sm text-gray-400 space-y-3">
+            <div className="text-sm text-gray-500 space-y-3">
               <p className="font-mono text-xs flex justify-between items-center">
                 <span className="text-gray-500">Hora Actual:</span> 
-                <span className={`text-lg font-bold text-${PRIMARY_COLOR}-400`}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                <span className={`text-lg font-bold text-${PRIMARY_COLOR}-600`}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </p>
               
               {/* Indicador de Estado LUZ/OSCURIDAD */}
-              <div className="p-2 rounded-md border border-gray-700 bg-gray-900 flex justify-between items-center">
+              <div className="p-2 rounded-md border border-gray-300 bg-gray-50 flex justify-between items-center">
                   <span className="font-medium text-xs text-gray-500">Estado:</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${isNowLight 
-                    ? `bg-yellow-800 text-yellow-300` 
-                    : `bg-indigo-800 text-indigo-300`}`}>
+                    ? `bg-green-100 text-green-700` 
+                    : `bg-indigo-100 text-indigo-700`}`}>
                     {isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}
                   </span>
               </div>
               
               {/* Progreso (Próximo Cambio) */}
-              <div className={`font-semibold p-3 rounded-md border border-dashed border-gray-600 bg-gray-900`}>
+              <div className={`font-semibold p-3 rounded-md border border-dashed border-gray-300 bg-gray-50`}>
                   <p className="text-xs text-gray-500 mb-1">Próximo Evento ({nextChangeEvent.action}):</p>
-                  <span className={`text-white text-lg font-bold font-mono`}>
+                  <span className={`text-gray-800 text-lg font-bold font-mono`}>
                     {nextChangeEvent.time}
                   </span>
                   <span className="text-gray-500 text-sm ml-1">
@@ -359,11 +351,11 @@ export default function App() {
               </div>
 
               {/* Horarios del Día Actual */}
-              <div className="pt-3 border-t border-gray-700">
-                <h3 className="font-bold text-gray-300 text-sm mb-2">Horario de Hoy:</h3>
+              <div className="pt-3 border-t border-gray-200">
+                <h3 className="font-bold text-gray-700 text-sm mb-2">Horario de Hoy:</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div><span className="text-yellow-500">LUZ:</span> <strong className="text-white">{lightScheduleToday.lightStart}</strong> a <strong className="text-white">{lightScheduleToday.lightEnd}</strong></div>
-                  <div><span className="text-indigo-500">OSCURIDAD:</span> <strong className="text-white">{lightScheduleToday.darkStart}</strong> a <strong className="text-white">{lightScheduleToday.darkEnd}</strong></div>
+                  <div><span className="text-green-600">LUZ:</span> <strong className="text-gray-800">{lightScheduleToday.lightStart}</strong> a <strong className="text-gray-800">{lightScheduleToday.lightEnd}</strong></div>
+                  <div><span className="text-indigo-600">OSCURIDAD:</span> <strong className="text-gray-800">{lightScheduleToday.darkStart}</strong> a <strong className="text-gray-800">{lightScheduleToday.darkEnd}</strong></div>
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-red-500 mt-1">*{lightScheduleToday.status}</p>}
               </div>
@@ -371,13 +363,13 @@ export default function App() {
             </div>
 
             {/* SECCIÓN DE AHORRO */}
-            <div className="mt-6 pt-5 border-t border-gray-700">
-              <h3 className={`text-sm font-bold text-white mb-2`}>Balance Energético (vs 12L/12D)</h3>
+            <div className="mt-6 pt-5 border-t border-gray-200">
+              <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético (vs 12L/12D)</h3>
               
-              <div className="p-3 rounded-md bg-gray-900 border border-gray-700">
+              <div className="p-3 rounded-md bg-gray-50 border border-gray-300">
                 <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas:</p>
                 <p className="text-3xl font-extrabold mt-1 font-mono">
-                    <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-500` : (lightSaving.totalSaving < 0 ? 'text-red-500' : 'text-gray-500')}`}>
+                    <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
                         {lightSaving.totalSaving > 0 ? '+' : ''}{lightSaving.totalSaving.toFixed(1)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas</span>
@@ -385,9 +377,9 @@ export default function App() {
                 
                 <p className="text-xs text-gray-600 mt-2">
                     {lightSaving.totalSaving > 0 
-                        ? 'Ahorro (Usando menos luz que el ciclo estándar).'
+                        ? 'Ahorro (Menos horas que el ciclo estándar).'
                         : (lightSaving.totalSaving < 0 
-                            ? 'Gasto Extra (Usando más luz que el ciclo estándar).'
+                            ? 'Gasto Extra (Más horas que el ciclo estándar).'
                             : 'Uso Estándar (Exactamente 12 horas de luz).'
                         )
                     }
@@ -399,37 +391,37 @@ export default function App() {
 
         {/* Calendario */}
         <section className={CARD_CLASS + " p-0 overflow-hidden"}>
-          <div className={`flex items-center justify-between p-4 border-b border-gray-700 bg-gray-700`}>
-            <h2 className={`text-xl font-bold text-white`}>
+          <div className={`flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50`}>
+            <h2 className={`text-xl font-bold text-gray-800`}>
               Visualización por Ciclos (Día × Hora)
             </h2>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-500">
               {durationDays} días de monitoreo
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-xs divide-y divide-gray-700">
-              <thead className="bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-700">
+            <table className="min-w-full text-xs divide-y divide-gray-200">
+              <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm border-b border-gray-200">
                 <tr>
-                  <th className={`p-2 border-r border-gray-700 text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-400 sticky left-0 bg-gray-800`}>Día #</th>
+                  <th className={`p-2 border-r border-gray-200 text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-500 sticky left-0 bg-gray-100`}>Día #</th>
                   {Array.from({length:24}).map((_,h) => (
-                    <th key={h} className="p-2 border-r border-gray-800 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">{h}h</th>
+                    <th key={h} className="p-2 border-r border-gray-300 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">{h}h</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-gray-200">
                 {calendar.map((row, d) => (
-                  <tr key={d} className={`transition duration-100 ${d === currentDayIndex ? 'bg-gray-700/50 border-l-2 border-l-yellow-500' : 'hover:bg-gray-800/50'}`}>
-                    <td className={`p-2 border-r border-gray-700 text-xs font-bold text-white sticky left-0 ${d === currentDayIndex ? 'bg-gray-700/50' : 'bg-gray-800'}`}>{d+1}</td>
+                  <tr key={d} className={`transition duration-100 ${d === currentDayIndex ? 'bg-yellow-50 border-l-2 border-l-yellow-500' : 'hover:bg-gray-50'}`}>
+                    <td className={`p-2 border-r border-gray-200 text-xs font-bold text-gray-800 sticky left-0 ${d === currentDayIndex ? 'bg-yellow-50' : 'bg-white'}`}>{d+1}</td>
                     {row.map((isLight, h) => {
                       const isCurrentCell = d === currentDayIndex && h === currentHourIndex;
                       const cellClass = isLight 
-                        ? 'bg-yellow-900/40 text-yellow-300 border-yellow-800/50' // LUZ 
-                        : 'bg-gray-700/50 text-gray-400 border-gray-700/50'; // OSCURIDAD 
+                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200' // LUZ 
+                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'; // OSCURIDAD 
 
                       return (
-                        <td key={h} className={`p-0.5 border-r border-gray-800 text-center align-middle`}>
+                        <td key={h} className={`p-0.5 border-r border-gray-300 text-center align-middle`}>
                           <div className={`w-full h-6 flex items-center justify-center text-xs font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-2 ring-red-500 shadow-lg z-20' : ''} transition-all duration-100 ease-in-out font-mono`}>
                             {isLight ? 'L' : 'D'}
                           </div>
@@ -442,8 +434,8 @@ export default function App() {
             </table>
           </div>
 
-          <footer className="mt-3 p-4 text-xs text-gray-600 border-t border-gray-700">
-            Leyenda: L (Luz) / D (Oscuridad). La celda actual se resalta en rojo.
+          <footer className="mt-3 p-4 text-xs text-gray-500 border-t border-gray-200">
+            Leyenda: L (Luz) / D (Oscuridad). La celda actual se resalta con un borde rojo.
           </footer>
         </section>
 
