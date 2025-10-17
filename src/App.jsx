@@ -3,8 +3,8 @@ Polished App.jsx — Fotoperiodo App
 - Código revisado y limpiado para evitar errores en ejecución.
 - Validaciones de inputs, manejo robusto de localStorage, export/import, y UI accesible.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- CORRECCIÓN CLAVE: Se corrige y unifica la hora de "Próximo Evento" y el bloque de "Horario HOY (ON/OFF)" para garantizar consistencia.
-- MEJORA ESTÉTICA: Se restaura el fondo unificado (degradado) y el bloque de horario detallado (ON/OFF con fecha/hora).
+- CORRECCIÓN CLAVE: Se corrige la lógica de fechas y horas en 'lightScheduleToday' para que los horarios ON/OFF coincidan exactamente con 'Próximo Evento' al cruzar la medianoche.
+- MEJORA: Se restaura el formato Días/Horas/Minutos para el tiempo transcurrido.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -96,7 +96,6 @@ export default function App() {
   }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
-    // Offset en horas (incluye minutos y segundos) desde 00:00 del día de inicio.
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
@@ -143,11 +142,6 @@ export default function App() {
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
   
-  // ---- Días 24 hs (Duración equivalente en ciclos de 24h) ----
-  const days24h = useMemo(() => {
-    return hoursSinceStartNow / 24;
-  }, [hoursSinceStartNow]);
-
   // ---- FORMATO DE TIEMPO TRANSCURRIDO (DÍAS, HORAS, MINUTOS) ----
   const formattedTimeElapsed = useMemo(() => {
     if (hoursSinceStartNow < 0) return { days: 0, hours: 0, minutes: 0, display: "0 d" };
@@ -161,7 +155,7 @@ export default function App() {
     let parts = [];
     if (days > 0) parts.push(`${days} d`);
     if (hours > 0 || (days === 0 && minutes > 0)) parts.push(`${hours} h`);
-    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`); // Mostrar minutos solo si no hay días/horas
+    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`); 
 
     return { 
         days, 
@@ -207,6 +201,7 @@ export default function App() {
     const precision = 1 / 60; // 1 minuto
     
     // 1. Determinar el estado inicial del día (hora 0)
+    // Usamos un ligero offset para saber el estado "justo después" del inicio del día de calendario
     const isLightAtDayStart = isLightAtAbsoluteHours(dayStartAbsoluteHoursSinceStart + precision);
     
     if (isLightAtDayStart) {
@@ -228,23 +223,19 @@ export default function App() {
         darkStartHourToday = h;
       }
 
-      // Si encontramos ambos inicios (0h es uno de ellos), podemos salir.
       if (lightStartHourToday !== null && darkStartHourToday !== null) break;
     }
-
+    
     // 3. Formatear la hora y **fecha completa**
-    const formatDateTime = (h) => {
-      if (h === null) return 'N/A';
-      const totalMinutes = Math.round(h * 60);
-      const dayOffset = Math.floor(totalMinutes / (24 * 60));
-      const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-      const minutes = totalMinutes % 60;
+    // Se usa el número de horas transcurridas desde el inicio del programa (startDateObj)
+    const formatDateTime = (hRelative) => {
+      if (hRelative === null) return 'N/A';
       
-      const d = new Date(startDateObj.getTime());
-      // Ajustar la fecha base al inicio del día de 24h actual (día de calendario)
-      d.setHours(0,0,0,0);
-      d.setTime(d.getTime() + (dayIndex * 24) * 3600000 + dayOffset * 24 * 3600000 + hours * 3600000 + minutes * 60000);
+      // hAbsolute es el total de horas transcurridas desde el startDateObj hasta este evento
+      const hAbsolute = dayIndex * 24 + hRelative - fractionalStartOffset;
       
+      const d = new Date(startDateObj.getTime() + hAbsolute * 3600000); // 3600000ms en una hora
+
       return d.toLocaleDateString([], { 
         month: 'short', 
         day: 'numeric', 
@@ -253,101 +244,46 @@ export default function App() {
       });
     };
     
-    // 4. Calcular la hora de FIN
-    let lightEndHourToday = null;
-    let darkEndHourToday = null;
+    // 4. Calcular el tiempo absoluto del evento de fin (en horas)
+    // El fin de una fase es el inicio de la siguiente. 
+    // Debido a que el ciclo (L+D) es mayor a 24h, los eventos pueden no caer en el mismo día 24h.
+    
+    let finalLightEndRelative = null; // Hora de inicio de la oscuridad (OFF)
+    let finalDarkEndRelative = null;  // Hora de inicio de la luz (ON)
 
+    // Si la luz empieza hoy, el fin de la luz (OFF) ocurre LightHours después del inicio de luz
     if (lightStartHourToday !== null) {
-      // El fin de la luz es el inicio de la oscuridad (si la oscuridad está en este día) o 24h.
-      lightEndHourToday = darkStartHourToday !== null && darkStartHourToday > lightStartHourToday ? darkStartHourToday : 24;
-      // Ajuste para el ciclo L+D: Si el ciclo es más largo que 24h, o si la oscuridad comienza el día siguiente
-      // el fin de la luz real es lightStartHourToday + lightHours, pero para un calendario de 24h,
-      // solo mostramos hasta 24h.
-      if (lightStartHourToday + lightHours < lightEndHourToday) {
-          lightEndHourToday = lightStartHourToday + lightHours; // Esto puede ir más allá de 24.
-      }
-      lightEndHourToday = Math.min(lightEndHourToday, 24); // Aseguramos no pasar de 24h en el día actual
-      
-      // La hora de fin de luz real (que es el próximo apagado) debe ser el inicio de oscuridad
-      // Si el inicio de oscuridad es 0, significa que la luz termina el día anterior.
-      if (darkStartHourToday === 0 && lightStartHourToday !== 0) {
-          // Si la oscuridad empieza a las 0h, la luz del día actual (que empezó hoy) debe terminar. 
-          // Esto sólo sucede si el ciclo es de 24h y es 12/12. Si no, debe ser el inicio de oscuridad del próximo día.
-          // El calculo correcto es: hora de inicio de luz + horas de luz.
-          // En este bloque se calcula el horario para el día de 24h. La hora de fin es la hora de inicio de oscuridad.
-          // El valor que necesitamos para el "OFF (Fin Luz)" es el inicio de oscuridad. 
-      }
+        finalLightEndRelative = lightStartHourToday + lightHours;
     }
-    
+    // Si la oscuridad empieza hoy, el fin de la oscuridad (ON) ocurre DarkHours después del inicio de oscuridad
     if (darkStartHourToday !== null) {
-      // El fin de la oscuridad es el inicio de la luz (si la luz está en este día) o 24h.
-      darkEndHourToday = lightStartHourToday !== null && lightStartHourToday > darkStartHourToday ? lightStartHourToday : 24;
-      if (darkStartHourToday + darkHours < darkEndHourToday) {
-          darkEndHourToday = darkStartHourToday + darkHours; 
-      }
-      darkEndHourToday = Math.min(darkEndHourToday, 24);
+        finalDarkEndRelative = darkStartHourToday + darkHours;
     }
-    
-    // ** Corrección de hora de fin para coincidir con "Próximo Evento" **
-    // Para simplificar y asegurar consistencia con "Próximo Evento",
-    // usaremos la hora de inicio de la *próxima fase* como la hora de fin de la *fase actual* dentro del día 24h.
-    
-    // Si la luz empieza hoy y la oscuridad también, el fin de luz es el inicio de oscuridad.
-    if (lightStartHourToday !== null && darkStartHourToday !== null && lightStartHourToday < darkStartHourToday) {
-      lightEndHourToday = darkStartHourToday;
+
+    // Si el inicio de oscuridad fue el que empezó a 0h, la luz del día empieza en lightStartHourToday. 
+    // El final de la oscuridad (ON) es ese inicio de luz.
+    if (darkStartHourToday === 0 && lightStartHourToday !== null && lightStartHourToday > 0) {
+        finalDarkEndRelative = lightStartHourToday;
     } 
-    // Si la oscuridad empieza hoy y la luz también, el fin de oscuridad es el inicio de luz.
-    if (darkStartHourToday !== null && lightStartHourToday !== null && darkStartHourToday < lightStartHourToday) {
-      darkEndHourToday = lightStartHourToday;
-    }
-
-    // Si la luz empieza hoy (0h) y la oscuridad no, el fin de luz es donde empieza la oscuridad el próximo ciclo
-    if (lightStartHourToday === 0 && darkStartHourToday !== 0 && darkStartHourToday === null) {
-      // Esto implica que la oscuridad cae en el día de calendario siguiente
-      // El fin de luz (OFF) es el inicio de oscuridad del ciclo, que ocurre en el próximo día de 24h.
-      // Aquí devolvemos el valor que hará que el formateador calcule la fecha/hora correcta: lightStartHourToday + lightHours
-      return {
-          status: null,
-          lightStart: formatDateTime(lightStartHourToday),
-          lightEnd: formatDateTime(lightStartHourToday + lightHours), // Esto resuelve la inconsistencia
-          darkStart: formatDateTime(darkStartHourToday), // Será N/A
-          darkEnd: formatDateTime(darkEndHourToday), // Será N/A
-      }
+    // Si el inicio de luz fue el que empezó a 0h, la oscuridad del día empieza en darkStartHourToday. 
+    // El final de la luz (OFF) es ese inicio de oscuridad.
+    else if (lightStartHourToday === 0 && darkStartHourToday !== null && darkStartHourToday > 0) {
+        finalLightEndRelative = darkStartHourToday;
     }
     
-    // Si la oscuridad empieza hoy (0h) y la luz no, el fin de oscuridad es donde empieza la luz el próximo ciclo
-    if (darkStartHourToday === 0 && lightStartHourToday !== 0 && lightStartHourToday === null) {
-        return {
-            status: null,
-            lightStart: formatDateTime(lightStartHourToday), // Será N/A
-            lightEnd: formatDateTime(lightEndHourToday), // Será N/A
-            darkStart: formatDateTime(darkStartHourToday),
-            darkEnd: formatDateTime(darkStartHourToday + darkHours), // Esto resuelve la inconsistencia
-        }
-    }
+    // En ciclos > 24h, la fase que inicia a 0h termina al inicio de la fase opuesta en el mismo ciclo (L+D horas después).
+    // Usamos el cálculo simple de duración para asegurar que el evento de fin sea el correcto,
+    // y el formateador de fecha/hora se encargará del salto de día.
     
-    // Caso de ciclo completo en el día (12L/12D en el mismo día)
-    if (lightStartHourToday !== null && darkStartHourToday !== null && lightStartHourToday < darkStartHourToday) {
-        lightEndHourToday = darkStartHourToday;
-        darkEndHourToday = lightStartHourToday + 24; // El encendido de luz para el próximo día
-    } else if (lightStartHourToday !== null && darkStartHourToday !== null && darkStartHourToday < lightStartHourToday) {
-        darkEndHourToday = lightStartHourToday;
-        lightEndHourToday = darkStartHourToday + 24; // El inicio de oscuridad para el próximo día
-    }
-
-    // Usaremos las horas de duración para asegurar que los eventos de fin sean correctos.
-    // lightEnd HourToday es el inicio de oscuridad del ciclo, que ocurre lightHours horas después de lightStart.
-    const finalLightEnd = lightStartHourToday !== null ? lightStartHourToday + lightHours : null;
-    const finalDarkEnd = darkStartHourToday !== null ? darkStartHourToday + darkHours : null;
-    
-    // La clave es NO truncar a 24h aquí, sino dejar que el formateador maneje el salto de día.
+    const lightEndToFormat = lightStartHourToday !== null ? lightStartHourToday + lightHours : null;
+    const darkEndToFormat = darkStartHourToday !== null ? darkStartHourToday + darkHours : null;
     
     return {
       status: null,
       lightStart: formatDateTime(lightStartHourToday),
-      lightEnd: formatDateTime(finalLightEnd), // La hora de fin de luz es el inicio de oscuridad real
+      lightEnd: formatDateTime(lightEndToFormat), // Usa la duración real para la fecha/hora
       darkStart: formatDateTime(darkStartHourToday),
-      darkEnd: formatDateTime(finalDarkEnd), // La hora de fin de oscuridad es el inicio de luz real
+      darkEnd: formatDateTime(darkEndToFormat), // Usa la duración real para la fecha/hora
     };
   }, [currentDayIndex24h, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
 
