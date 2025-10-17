@@ -293,18 +293,28 @@ export default function App() {
           (lightStartHourToday === 0 || darkStartHourToday === 0 || (lightStartHourToday !== 0 && darkStartHourToday !== 0))) break;
     }
 
-    const formatTime = (h) => {
+    // ** MODIFICACIÓN CLAVE: Formatear a fecha/hora completa **
+    const formatDateTime = (h) => {
       if (h === null) return 'N/A';
       const totalMinutes = Math.round(h * 60);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
       
       const d = new Date(startDateObj.getTime());
+      // Ajustar la fecha base al inicio del día de 24h actual
       d.setHours(0,0,0,0);
       d.setTime(d.getTime() + (dayIndex * 24 + hours) * 3600000 + minutes * 60000);
       
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // Devolver la fecha y hora completa
+      return d.toLocaleString([], { 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
     };
+    // ** FIN MODIFICACIÓN CLAVE **
+
 
     let lightEndHourToday = null;
     let darkEndHourToday = null;
@@ -330,10 +340,10 @@ export default function App() {
 
     return {
       status: null,
-      lightStart: formatTime(lightStartHourToday),
-      lightEnd: formatTime(lightEndHourToday),
-      darkStart: formatTime(darkStartHourToday),
-      darkEnd: formatTime(darkEndHourToday),
+      lightStart: formatDateTime(lightStartHourToday),
+      lightEnd: formatDateTime(lightEndHourToday),
+      darkStart: formatDateTime(darkStartHourToday),
+      darkEnd: formatDateTime(darkEndHourToday),
     };
   }, [currentDayIndex24h, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
 
@@ -522,17 +532,29 @@ export default function App() {
               <div className="border-b border-slate-700 pb-2">
                 <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action}):</div>
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
-                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNextChange?.toFixed(2) ?? '--'} hrs</div>
+                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
+              {/* ** MODIFICACIÓN UI/JSX ** */}
               <div>
                 <div className="text-xs text-gray-400">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-2 gap-1 text-white">
-                  <div><span className="text-yellow-400 font-semibold">Luz:</span> {lightScheduleToday.lightStart} — {lightScheduleToday.lightEnd}</div>
-                  <div><span className="text-indigo-400 font-semibold">Oscu:</span> {lightScheduleToday.darkStart} — {lightScheduleToday.darkEnd}</div>
+                <div className="text-sm grid grid-cols-1 gap-2 text-white mt-1">
+                  <div className="border border-yellow-800/50 p-2 rounded-lg bg-yellow-900/10">
+                    <span className="text-yellow-400 font-semibold block mb-1 text-base">ON (Inicio Luz):</span> 
+                    <div className="font-mono">{lightScheduleToday.lightStart}</div>
+                    <span className="text-yellow-400 font-semibold block mt-2 text-base">OFF (Fin Luz):</span> 
+                    <div className="font-mono">{lightScheduleToday.lightEnd}</div>
+                  </div>
+                  <div className="border border-indigo-800/50 p-2 rounded-lg bg-indigo-900/10">
+                    <span className="text-indigo-400 font-semibold block mb-1 text-base">OFF (Inicio Oscuridad):</span> 
+                    <div className="font-mono">{lightScheduleToday.darkStart}</div>
+                    <span className="text-indigo-400 font-semibold block mt-2 text-base">ON (Fin Oscuridad):</span> 
+                    <div className="font-mono">{lightScheduleToday.darkEnd}</div>
+                  </div>
                 </div>
                 {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
               </div>
+              {/* ** FIN MODIFICACIÓN UI/JSX ** */}
             </div>
           </aside>
 
