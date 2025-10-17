@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
+// Función auxiliar para limitar valores
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  // Longitud total del ciclo (ej: 13 + 14 = 27)
   const cycleLength = useMemo(() => {
     const light = Number(hoursLight) || 0;
     const dark = Number(hoursDark) || 0;
@@ -93,6 +95,7 @@ export default function App() {
     return days;
   }, [durationDays, cycleLength, fractionalStartOffset, hoursLight]);
 
+  // Horas totales transcurridas desde el inicio
   const hoursSinceStartNow = useMemo(() => {
     const diffMs = now.getTime() - startDateObj.getTime();
     return diffMs / (1000 * 60 * 60);
@@ -109,7 +112,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS PRINCIPALES (Ahorro corregido) ======================
+  // === CÁLCULOS PRINCIPALES (Ahorro corregido y perfeccionado) =======
   // =================================================================
 
   const daysSinceStart = useMemo(() => {
@@ -119,26 +122,33 @@ export default function App() {
   }, [now, startDateObj]);
 
   const lightSaving = useMemo(() => {
-    // CORRECCIÓN CLAVE: Usamos los días fraccionarios para una mayor precisión
+    // Días fraccionarios transcurridos para máxima precisión
     const daysElapsed = Math.max(0, hoursSinceStartNow / 24); 
     
-    // ESTÁNDAR FIJO DE COMPARACIÓN (12L/12D)
-    const standardLightHours = 12; 
+    // ESTÁNDAR FIJO DE COMPARACIÓN
+    const standardLightHoursPerDay = 12; // 12 horas de luz por cada 24 horas terrestres
     
-    // Horas de luz del ciclo personalizado
     const customLightHours = Number(hoursLight) || 0; 
+    const customCycleLength = cycleLength; 
     
-    // Ahorro/Gasto por día (será negativo si el ciclo personalizado usa más luz)
-    const savingPerHour = standardLightHours - customLightHours; 
-    
-    // Ahorro/Gasto Total. Usa días fraccionarios para incluir el día parcial.
-    const rawTotalSaving = savingPerHour * daysElapsed;
+    // CORRECCIÓN CLAVE: Calcula las HORAS DE LUZ REALES usadas en un DÍA TERRESTRE (24 horas)
+    const customLightHoursPerDay = customCycleLength > 0 
+      ? (customLightHours / customCycleLength) * 24
+      : 0;
 
-    // Asegura que totalSaving es un número (0 si es NaN)
+    // Ahorro/Gasto por día (será negativo si el ciclo personalizado usa más luz por día)
+    const savingPerHourPerDay = standardLightHoursPerDay - customLightHoursPerDay; 
+    
+    // Ahorro/Gasto Total acumulado
+    const rawTotalSaving = savingPerHourPerDay * daysElapsed;
+
     const totalSaving = rawTotalSaving || 0; 
-
-    return { totalSaving: totalSaving };
-  }, [hoursSinceStartNow, hoursLight]); // Dependencia hoursSinceStartNow actualizada
+    
+    return { 
+      totalSaving: totalSaving,
+      savingPerHourPerDay: savingPerHourPerDay
+    };
+  }, [hoursSinceStartNow, hoursLight, cycleLength]); 
 
 
   const lightScheduleToday = useMemo(() => {
@@ -218,7 +228,6 @@ export default function App() {
         nextState = 'Luz';
     }
 
-    // Asegura que hoursToNextChange es un número válido y no negativo
     const hoursToNextChange = Math.max(0, rawHoursToNextChange || 0);
     
     const diffMs = hoursToNextChange * (1000 * 60 * 60);
@@ -244,14 +253,11 @@ export default function App() {
   const PRIMARY_COLOR = 'blue'; 
   const ACCENT_COLOR = 'green';  
 
-  // Input: Sin fondo, solo borde inferior gris claro y focus azul.
   const INPUT_CLASS = `w-full p-2.5 border-b border-gray-300 rounded-none bg-white text-gray-800 
                        focus:ring-0 focus:border-b-2 focus:border-${PRIMARY_COLOR}-500 transition duration-200 shadow-none text-base`;
   
-  // Tarjeta: Sin bordes, sin sombras, fondo blanco.
   const CARD_CLASS = `p-6 bg-white transition duration-300`;
 
-  // Títulos: Gruesos, alto contraste, solo borde inferior sutil.
   const TITLE_CLASS = `text-2xl font-extrabold mb-4 pb-3 border-b border-gray-200 text-gray-900`;
 
 
@@ -260,10 +266,8 @@ export default function App() {
   }
 
   return (
-    // Fondo blanco puro. Flex para centrar verticalmente si el contenido es corto.
     <div className="min-h-screen bg-white text-gray-900 font-sans flex justify-center w-full">
       
-      {/* Contenedor principal: Centrado, ancho fijo (simula tarjeta de app) */}
       <div className="max-w-4xl w-full p-4 sm:p-8">
         
         <header className="mb-8 pt-4 pb-2 text-center">
@@ -377,12 +381,23 @@ export default function App() {
 
             </div>
 
-            {/* SECCIÓN DE AHORRO */}
+            {/* SECCIÓN DE AHORRO (CÁLCULO CORREGIDO) */}
             <div className="mt-6 pt-5 border-t border-gray-200">
               <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético vs Ciclo Común (12L/12D)</h3>
               
               <div className="p-3 bg-gray-50">
-                <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas:</p>
+                
+                {/* Muestra la diferencia diaria (la clave de la corrección) */}
+                <p className="text-xs font-medium text-gray-500">Diferencia Diaria vs 12L/12D:</p>
+                <p className="text-xl font-extrabold mt-1 mb-3 font-mono">
+                    <span className={`${lightSaving.savingPerHourPerDay > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.savingPerHourPerDay < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                        {lightSaving.savingPerHourPerDay > 0 ? '+' : ''}{(lightSaving.savingPerHourPerDay || 0).toFixed(2)} 
+                    </span>
+                    <span className="text-base text-gray-500 font-normal ml-1">horas/día</span>
+                </p>
+
+
+                <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas/Gastadas:</p>
                 <p className="text-3xl font-extrabold mt-1 font-mono">
                     <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
                         {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(2)} 
@@ -392,10 +407,10 @@ export default function App() {
                 
                 <p className="text-xs text-gray-600 mt-2">
                     {lightSaving.totalSaving > 0 
-                        ? 'Ahorro (Tu ciclo usa menos luz que el estándar 12L/12D).'
+                        ? 'Ahorro Acumulado (Tu ciclo usa menos luz por día terrestre que el estándar).'
                         : (lightSaving.totalSaving < 0 
-                            ? 'Gasto Extra (Tu ciclo usa más luz que el estándar 12L/12D).'
-                            : 'Uso Estándar (Igual cantidad de horas de luz que el ciclo 12L/12D).'
+                            ? 'Gasto Extra Acumulado (Tu ciclo usa más luz por día terrestre que el estándar).'
+                            : 'Uso Estándar (Igual cantidad de horas de luz por día).'
                         )
                     }
                 </p>
