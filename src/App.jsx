@@ -27,9 +27,8 @@ export default function App() {
   const [hoursDark, setHoursDark] = useState(14);
   const [durationDays, setDurationDays] = useState(60);
   
-  // NUEVOS ESTADOS para el ciclo de comparación
-  const [standardHoursLight, setStandardHoursLight] = useState(18); // Default 18/6
-  const [standardHoursDark, setStandardHoursDark] = useState(6); 
+  // ESTADOS DE COMPARACIÓN FIJADOS: standardHoursLight = 12, standardHoursDark = 12
+  // Se eliminan los estados de comparación configurables.
   
   const [now, setNow] = useState(new Date());
 
@@ -45,10 +44,7 @@ export default function App() {
         if (obj.hoursDark !== undefined) setHoursDark(Number(obj.hoursDark) || 0);
         if (obj.durationDays !== undefined) setDurationDays(Number(obj.durationDays) || 1);
         
-        // Carga de los nuevos valores de comparación
-        if (obj.standardHoursLight !== undefined) setStandardHoursLight(Number(obj.standardHoursLight) || 18);
-        if (obj.standardHoursDark !== undefined) setStandardHoursDark(Number(obj.standardHoursDark) || 6);
-
+        // (Líneas de carga de standardHoursLight/Dark eliminadas)
       }
     } catch (e) {
       console.warn("No se pudieron cargar los ajustes:", e);
@@ -57,9 +53,10 @@ export default function App() {
 
   // autosave
   useEffect(() => {
-    const obj = { startDate, hoursLight, hoursDark, durationDays, standardHoursLight, standardHoursDark }; // <-- Actualizado
+    // Objeto de guardado simplificado
+    const obj = { startDate, hoursLight, hoursDark, durationDays }; 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  }, [startDate, hoursLight, hoursDark, durationDays, standardHoursLight, standardHoursDark]); // <-- Actualizado
+  }, [startDate, hoursLight, hoursDark, durationDays]); // <-- Dependencias simplificadas
 
   // tick every 30s so "current" updates
   useEffect(() => {
@@ -119,7 +116,7 @@ export default function App() {
   const currentHourIndex = useMemo(() => Math.floor(((hoursSinceStartNow % 24) + 24) % 24), [hoursSinceStartNow]);
 
   // =================================================================
-  // === CÁLCULOS PRINCIPALES (CORREGIDO: Manejo de NaN/undefined) ====
+  // === CÁLCULOS PRINCIPALES (Ahorro fijo 12L/12D) ==================
   // =================================================================
 
   const daysSinceStart = useMemo(() => {
@@ -130,8 +127,9 @@ export default function App() {
 
   const lightSaving = useMemo(() => {
     const daysElapsed = Math.max(0, daysSinceStart);
-    // NUEVA LÓGICA: Compara contra la luz del ciclo de comparación configurado
-    const standardLightHours = Number(standardHoursLight) || 0; 
+    
+    // ESTÁNDAR FIJO DE COMPARACIÓN (12L/12D)
+    const standardLightHours = 12; 
     
     // Horas de luz del ciclo personalizado
     const customLightHours = Number(hoursLight) || 0; 
@@ -146,7 +144,7 @@ export default function App() {
     const totalSaving = rawTotalSaving || 0; 
 
     return { totalSaving: totalSaving };
-  }, [daysSinceStart, hoursLight, standardHoursLight]); // <-- Dependencia actualizada
+  }, [daysSinceStart, hoursLight]); // standardHoursLight eliminado de dependencias
 
 
   const lightScheduleToday = useMemo(() => {
@@ -322,30 +320,7 @@ export default function App() {
               </div>
             </div>
             
-            {/* NUEVA SECCIÓN: Ciclo de Comparación */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-bold text-gray-800 mb-3">
-                    Ciclo Común para Comparación (Base de Ahorro)
-                </h3>
-                <p className="text-xs text-gray-500 mb-4">
-                    Compara tu ciclo personalizado contra este ciclo común. Ej: 18L/6D para vegetación.
-                </p>
-                <div className="grid sm:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Horas Luz Común</label>
-                        <input type="number" min="0" max="24" step="0.5" value={standardHoursLight}
-                            onChange={(e) => setStandardHoursLight(clamp(Number(e.target.value), 0, 24))}
-                            className={INPUT_CLASS} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Horas Oscuridad Común</label>
-                        <input type="number" min="0" max="24" step="0.5" value={standardHoursDark}
-                            onChange={(e) => setStandardHoursDark(clamp(Number(e.target.value), 0, 24))}
-                            className={INPUT_CLASS} />
-                    </div>
-                </div>
-            </div>
-
+            {/* Sección de comparación eliminada para simplificar la interfaz */}
           </div>
 
           {/* Estado actual y Ahorro */}
@@ -411,7 +386,7 @@ export default function App() {
 
             {/* SECCIÓN DE AHORRO */}
             <div className="mt-6 pt-5 border-t border-gray-200">
-              <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético vs {standardHoursLight}L/{standardHoursDark}D</h3>
+              <h3 className={`text-sm font-bold text-gray-800 mb-2`}>Balance Energético vs Ciclo Común (12L/12D)</h3>
               
               <div className="p-3 bg-gray-50">
                 <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas:</p>
@@ -424,10 +399,10 @@ export default function App() {
                 
                 <p className="text-xs text-gray-600 mt-2">
                     {lightSaving.totalSaving > 0 
-                        ? 'Ahorro (Tu ciclo usa menos luz que el común).'
+                        ? 'Ahorro (Tu ciclo usa menos luz que el estándar 12L/12D).'
                         : (lightSaving.totalSaving < 0 
-                            ? 'Gasto Extra (Tu ciclo usa más luz que el común).'
-                            : 'Uso Estándar (Igual cantidad de horas de luz que el ciclo común).'
+                            ? 'Gasto Extra (Tu ciclo usa más luz que el estándar 12L/12D).'
+                            : 'Uso Estándar (Igual cantidad de horas de luz que el ciclo 12L/12D).'
                         )
                     }
                 </p>
