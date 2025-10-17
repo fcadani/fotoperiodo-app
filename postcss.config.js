@@ -1,7 +1,8 @@
 // postcss.config.js
 export default {
   plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
+    // Usamos el nombre que Vercel está pidiendo
+    '@tailwindcss/postcss': {}, 
+    'autoprefixer': {},
   },
 }
