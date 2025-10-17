@@ -24,8 +24,9 @@ export default function App() {
     return d.toISOString().slice(0,16);
   });
 
+  // ESTADO CORREGIDO: Se usa setHoursDark para hoursDark
   const [hoursLight, setHoursLight] = useState(13);
-  const [hoursDark, setHoursLight] = useState(14);
+  const [hoursDark, setHoursDark] = useState(14); 
   const [durationDays, setDurationDays] = useState(60);
   
   const [now, setNow] = useState(new Date());
@@ -38,6 +39,7 @@ export default function App() {
         const obj = JSON.parse(raw);
         if (obj.startDate) setStartDate(obj.startDate);
         if (obj.hoursLight !== undefined) setHoursLight(Number(obj.hoursLight) || 0);
+        // Usamos setHoursDark en la carga
         if (obj.hoursDark !== undefined) setHoursDark(Number(obj.hoursDark) || 0);
         if (obj.durationDays !== undefined) setDurationDays(Number(obj.durationDays) || 1);
       }
@@ -264,12 +266,12 @@ export default function App() {
   // =================================================================
   // === CLASES TAILWIND CSS (ALTO CONTRASTE / SIN BORDES) ============
   // =================================================================
-
-  const PRIMARY_COLOR = 'blue'; 
-  const ACCENT_COLOR = 'green';  
+  
+  // Usamos los nombres de color literales para que Tailwind CSS pueda detectarlos
+  // sin error de compilación.
 
   const INPUT_CLASS = `w-full p-2.5 border-b border-gray-300 rounded-none bg-white text-gray-800 
-                       focus:ring-0 focus:border-b-2 focus:border-${PRIMARY_COLOR}-500 transition duration-200 shadow-none text-base`;
+                       focus:ring-0 focus:border-b-2 focus:border-blue-500 transition duration-200 shadow-none text-base`;
   
   const CARD_CLASS = `p-6 bg-white transition duration-300`;
 
@@ -348,7 +350,8 @@ export default function App() {
                 
                 <p className="font-semibold text-gray-900 flex items-center mt-3">
                     Días de Cultivo (Terrestres): 
-                    <span className={`text-4xl font-extrabold font-mono text-${PRIMARY_COLOR}-600 ml-2 leading-none`}>
+                    {/* Clase literal 'text-blue-600' */}
+                    <span className={'text-4xl font-extrabold font-mono text-blue-600 ml-2 leading-none'}>
                         {Math.max(0, daysSinceStart)}
                     </span>
                 </p>
@@ -356,7 +359,7 @@ export default function App() {
             
             <div className="text-sm text-gray-600 space-y-4">
               
-              {/* === NUEVA MÉTRICA: CICLO PERSONALIZADO === */}
+              {/* === MÉTRICA: CICLO PERSONALIZADO === */}
               <div className="py-2 border-b border-gray-200 bg-blue-50 p-2 rounded-md">
                 <p className="font-semibold text-gray-900 text-sm mb-1">
                     Progreso en el Ciclo Personalizado
@@ -378,7 +381,8 @@ export default function App() {
 
               <p className="font-mono text-sm flex justify-between items-center pb-2 border-b border-gray-200 pt-2">
                 <span className="text-gray-600">Hora Actual:</span> 
-                <span className={`text-xl font-bold text-${PRIMARY_COLOR}-600`}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                {/* Clase literal 'text-blue-600' */}
+                <span className={'text-xl font-bold text-blue-600'}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </p>
               
               {/* Indicador de Estado LUZ/OSCURIDAD */}
@@ -426,7 +430,8 @@ export default function App() {
                 {/* Muestra la diferencia diaria (la clave de la corrección) */}
                 <p className="text-xs font-medium text-gray-500">Diferencia Diaria vs 12L/12D:</p>
                 <p className="text-xl font-extrabold mt-1 mb-3 font-mono">
-                    <span className={`${lightSaving.savingPerHourPerDay > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.savingPerHourPerDay < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                    {/* Clase literal 'text-green-600' */}
+                    <span className={`${lightSaving.savingPerHourPerDay > 0 ? 'text-green-600' : (lightSaving.savingPerHourPerDay < 0 ? 'text-red-600' : 'text-gray-500')}`}>
                         {lightSaving.savingPerHourPerDay > 0 ? '+' : ''}{(lightSaving.savingPerHourPerDay || 0).toFixed(2)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas/día</span>
@@ -435,7 +440,8 @@ export default function App() {
 
                 <p className="text-xs font-medium text-gray-500">Total de Horas Luz Ahorradas/Gastadas:</p>
                 <p className="text-3xl font-extrabold mt-1 font-mono">
-                    <span className={`${lightSaving.totalSaving > 0 ? `text-${ACCENT_COLOR}-600` : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
+                    {/* Clase literal 'text-green-600' */}
+                    <span className={`${lightSaving.totalSaving > 0 ? 'text-green-600' : (lightSaving.totalSaving < 0 ? 'text-red-600' : 'text-gray-500')}`}>
                         {lightSaving.totalSaving > 0 ? '+' : ''}{(lightSaving.totalSaving || 0).toFixed(2)} 
                     </span>
                     <span className="text-base text-gray-500 font-normal ml-1">horas</span>
@@ -457,7 +463,7 @@ export default function App() {
 
         {/* Calendario */}
         <section className={`${CARD_CLASS} p-0 overflow-hidden`}>
-          <div className={`flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50`}>
+          <div className={`flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50`}>
             <h2 className={`text-xl font-bold text-gray-800`}>
               Visualización por Ciclos (Día Terrestre × Hora)
             </h2>
@@ -466,20 +472,23 @@ export default function App() {
             </div>
           </div>
 
-          <div className="overflow-x-auto border-t border-gray-200">
-            <table className="min-w-full text-xs divide-y divide-gray-200">
+          <div className="border-t border-gray-200">
+            {/* W-FULL Y TABLE-FIXED FUERZAN EL AJUSTE PARA ELIMINAR SCROLL */}
+            <table className="w-full text-xs divide-y divide-gray-200 table-fixed"> 
               <thead className="bg-white sticky top-0 z-10 border-b border-gray-200">
                 <tr>
-                  <th className={`p-2 border-r border-gray-200 text-left w-20 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-white`}>Día #</th>
+                  {/* ANCHO FIJO PARA COLUMNA DÍA */}
+                  <th className={`p-1 border-r border-gray-200 text-left w-12 text-xs font-semibold uppercase tracking-wider text-gray-600 sticky left-0 bg-white`}>Día #</th>
                   {Array.from({length:24}).map((_,h) => (
-                    <th key={h} className="p-2 border-r border-gray-300 text-center text-xs font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
+                    {/* FUENTE PEQUEÑA Y PADDING REDUCIDO PARA HORAS */}
+                    <th key={h} className="p-1 text-center text-[0.6rem] font-semibold uppercase tracking-wider text-gray-600">{h}h</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {calendar.map((row, d) => (
                   <tr key={d} className={`transition duration-100 ${d === currentDayIndex ? 'bg-yellow-50/50 border-l-2 border-l-yellow-400' : 'hover:bg-gray-50'}`}>
-                    <td className={`p-2 border-r border-gray-200 text-xs font-bold text-gray-800 sticky left-0 ${d === currentDayIndex ? 'bg-yellow-50/50' : 'bg-white'}`}>{d+1}</td>
+                    <td className={`p-1 border-r border-gray-200 text-xs font-bold text-gray-800 sticky left-0 ${d === currentDayIndex ? 'bg-yellow-50/50' : 'bg-white'}`}>{d+1}</td>
                     {row.map((isLight, h) => {
                       const isCurrentCell = d === currentDayIndex && h === currentHourIndex;
                       const cellClass = isLight 
@@ -487,8 +496,10 @@ export default function App() {
                         : 'bg-indigo-100 text-indigo-700 border-indigo-200'; // OSCURIDAD 
 
                       return (
-                        <td key={h} className={`p-0.5 border-r border-gray-300 text-center align-middle`}>
-                          <div className={`w-full h-6 flex items-center justify-center text-xs font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-2 ring-red-500 shadow-lg z-20' : ''} transition-all duration-100 ease-in-out font-mono`}>
+                        {/* PADDING MÍNIMO PARA LAS CELDAS */}
+                        <td key={h} className={`p-px text-center align-middle`}>
+                          {/* ALTURA MÁS BAJA Y FUENTE MINÚSCULA */}
+                          <div className={`w-full h-4 flex items-center justify-center text-[0.6rem] font-bold rounded-sm border ${cellClass} ${isCurrentCell ? 'ring-1 ring-red-500 shadow-md z-20' : ''} transition-all duration-100 ease-in-out font-mono`}>
                             {isLight ? 'L' : 'D'}
                           </div>
                         </td>
