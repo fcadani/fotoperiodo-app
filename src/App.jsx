@@ -287,9 +287,9 @@ export default function App() {
       <Sun className="w-8 h-8 text-yellow-300" />
     </div>
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>SUPERCICLO</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo</h1>
       <p className="text-sm" style={{ color: 'var(--muted)' }}>
-        Configura tu SUPERCICLO, visualizá el calendario y descargalo
+        Configura cualquier fotoperiodo y visualizá el calendario
       </p>
     </div>
   </div>
