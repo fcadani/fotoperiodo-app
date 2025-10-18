@@ -279,39 +279,23 @@ export default function App() {
 
   /* ----------------- JSX ----------------- */
   return (
-    <div className="app-root min-h-screen font-inter">
-      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'var(--card)' }}>
+    <div className="app-root min-h-screen font-inter" style={{ backgroundColor: "#0b1020" }}>
+      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'transparent' }}>
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-  <div className="flex items-center gap-4">
-    <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
-      <Sun className="w-8 h-8 text-yellow-300" />
-    </div>
-    <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>
-        Fotoperiodo App
-      </h1>
-      <p className="text-sm" style={{ color: 'var(--muted)' }}>
-        Configura cualquier fotoperiodo y visualizá el calendario
-      </p>
-    </div>
-  </div>
+          <div className="flex items-center gap-4">
+            <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
+              <Sun className="w-8 h-8 text-yellow-300" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo</h1>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Configura cualquier fotoperiodo y visualizá el calendario</p>
+            </div>
+          </div>
 
-  <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
-    <button onClick={() => downloadCalendarImage('png')} className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition">
-      <Download className="w-4 h-4" /> Exportar
-    </button>
-
-    <label className="flex items-center gap-2 px-4 py-2 text-sm bg-pink-500 text-white rounded-lg cursor-pointer shadow-md hover:bg-pink-600 transition">
-      <Upload className="w-4 h-4" /> Importar
-      <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
-    </label>
-
-    <button onClick={resetDefaults} className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-600 transition">
-      <RefreshCw className="w-4 h-4" /> Reset
-    </button>
-  </div>
-</header>
-
+          <div className="ml-auto flex items-center gap-3">
+            <div className="text-sm text-gray-400 hide-sm"></div>
+          </div>
+        </header>
 
         <main className="grid lg:grid-cols-3 gap-6">
           {/* Configuration */}
@@ -351,7 +335,7 @@ export default function App() {
               <div className="flex flex-wrap gap-2 mt-2">
                 
 
-                <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> DESCARGAR JPG </button>
+                <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
 
                 <label className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
                   <Upload className="w-4 h-4"/> Importar config
@@ -431,7 +415,7 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <div className="text-sm text-gray-400">{durationDays} días</div>
                 <div className="flex gap-2">
-                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"><Download className="w-4 h-4" /> DESCARGAR JPG </button>
+                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"><Download className="w-4 h-4" /> Descargar JPG </button>
                 </div>
               </div>
             </div>
@@ -449,75 +433,72 @@ export default function App() {
                   </thead>
 
                 <tbody>
-  {calendar.map((row, d) => (
-    <tr
-      key={d}
-      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
-    >
-      {/* Nueva columna: Día */}
-      <td
-        className="p-1 sticky left-0 font-semibold"
-        style={{
-          zIndex: 15,
-          background:
-            d === currentDayIndex24h
-              ? 'rgba(99,102,241,0.12)'
-              : 'rgba(15,15,35,0.9)',
-        }}
-      >
-        {d + 1}
-      </td>
+                  {calendar.map((row, d) => (
+                    <tr
+                      key={d}
+                      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
+                    >
+                      {/* Nueva columna: Día */}
+                      <td
+                        className="p-1 sticky left-0 font-semibold"
+                        style={{
+                          zIndex: 15,
+                          background:
+                            d === currentDayIndex24h
+                              ? 'rgba(99,102,241,0.12)'
+                              : 'rgba(15,15,35,0.9)',
+                        }}
+                      >
+                        {d + 1}
+                      </td>
 
-      {/* Columna existente: Fecha */}
-      <td
-        className="p-1 sticky left-12 font-semibold"
-        style={{
-          zIndex: 10,
-          background:
-            d === currentDayIndex24h
-              ? 'rgba(99,102,241,0.12)'
-              : 'rgba(15,15,35,0.9)',
-        }}
-      >
-        {row[0].dateDisplay}
-      </td>
+                      {/* Columna existente: Fecha */}
+                      <td
+                        className="p-1 sticky left-12 font-semibold"
+                        style={{
+                          zIndex: 10,
+                          background:
+                            d === currentDayIndex24h
+                              ? 'rgba(99,102,241,0.12)'
+                              : 'rgba(15,15,35,0.9)',
+                        }}
+                      >
+                        {row[0].dateDisplay}
+                      </td>
 
-      {/* Horas 0h–23h */}
-      {row.map((cell, h) => {
-        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
-        return (
-          <td key={h} className="p-0.5">
-            <div
-              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
-                isCurrent ? 'now-cell' : ''
-              }`}
-              style={{
-                background: cell.isLight
-                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
-                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
-                color: '#fff',
-                transition: 'all .12s ease',
-              }}
-            >
-              {cell.isLight ? 'L' : 'D'}
-            </div>
-          </td>
-        );
-      })}
-    </tr>
-  ))}
-</tbody>
+                      {/* Horas 0h, 1h, 2h, etc */}
+                      {row.map((cell, h) => {
+                        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
+                        return (
+                          <td key={h} className="p-0.5">
+                            <div
+                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
+                                isCurrent ? 'now-cell' : ''
+                              }`}
+                              style={{
+                                background: cell.isLight
+                                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
+                                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
+                                color: '#fff',
+                                transition: 'all .12s ease',
+                              }}
+                            >
+                              {cell.isLight ? 'L' : 'D'}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
 
               </table>
             </div>
 
-                        <div className="p-3 text-xs text-gray-400 border-t">
-              Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (JPG) para usarlo de wallpaper.
-            </div>
+            <div className="p-3 text-xs text-gray-400 border-t">Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (PNG/JPG) para usarlo de wallpaper.</div>
           </section>
         </main>
       </div>
     </div>
   );
 }
-
