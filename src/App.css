@@ -180,3 +180,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
     padding: 0.4rem 0.9rem;
   }
 }
+
+html {
+  color-scheme: dark !important;
+}
