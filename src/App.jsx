@@ -495,10 +495,13 @@ export default function App() {
               </table>
             </div>
 
-            <div className="p-3 text-xs text-gray-400 border-t">Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (PNG/JPG) para usarlo de wallpaper.</div>
+                        <div className="p-3 text-xs text-gray-400 border-t">
+              Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (JPG) para usarlo de wallpaper.
+            </div>
           </section>
         </main>
       </div>
     </div>
   );
 }
+
