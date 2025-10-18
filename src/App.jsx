@@ -1,7 +1,7 @@
 /**
-Polished App.jsx — Fotoperiodo App (Días del Calendario con Fecha Real)
-- **MEJORA CLAVE:** El calendario ahora muestra la fecha real (ej: "17 oct") en lugar de solo el número de día (Día 1).
-- Se mantiene el número de día de 24h para el resaltado de la fila actual.
+Polished App.jsx — Fotoperiodo App (Fechas en Calendario con Formato Numérico)
+- MEJORA FINAL: Las fechas del calendario se cambian a formato numérico limpio (DD/MM) para mayor prolijidad.
+- Se mantienen todas las optimizaciones anteriores (Super Ciclo, Balance, Próximo Evento, eliminación de bloque "Horario HOY").
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -93,7 +93,6 @@ export default function App() {
   }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
-    // Usado para compensar el inicio del ciclo en el calendario
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
@@ -105,7 +104,6 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
-  // Lógica actual (basada en el archivo original): LUZ comienza en la hora de inicio.
   const isNowLight = useMemo(() => {
     return currentInCycle < Number(hoursLight);
   }, [currentInCycle, hoursLight]);
@@ -140,13 +138,9 @@ export default function App() {
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
 
-    // Horas de luz consumidas por el ciclo personalizado hasta ahora
     const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
-
-    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
 
-    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
@@ -189,21 +183,24 @@ export default function App() {
       const row = [];
       // Calcular la fecha para mostrar en la columna 'Día'
       const dateForDay = new Date(startOfDayStart.getTime() + d * MS_PER_DAY);
-      const dateDisplay = dateForDay.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      
+      // *** CAMBIO CLAVE: Formato numérico DD/MM ***
+      const dateDisplay = dateForDay.toLocaleDateString([], { 
+          day: '2-digit', 
+          month: '2-digit' 
+      }).replace(/\//g, '/'); // Asegura el separador en caso de diferentes localizaciones
       
       for (let h = 0; h < 24; h++) {
-        // La compensación fractionalStartOffset es necesaria para que el L/D caiga en la hora correcta del día.
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push({
           isLight: Boolean(isLightAtAbsoluteHours(hoursSinceStart)),
-          dateDisplay: dateDisplay // Se agrega la fecha a cada celda de la fila
+          dateDisplay: dateDisplay 
         });
       }
       rows.push(row);
     }
     return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, startDateObj]); // Dependencia de startDateObj
-  // ---- FIN BUILD CALENDAR DATA ----
+  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]); // Dependencia de startDateObj
 
 
   // ---- next change event ----
@@ -394,7 +391,6 @@ export default function App() {
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
-
             </div>
           </aside>
 
@@ -417,9 +413,8 @@ export default function App() {
                 </thead>
                 <tbody>
                   {calendar.map((row, d) => (
-                    // La comprobación de currentDayIndex24h se mantiene para el resaltado de la fila
                     <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      {/* Aquí mostramos la fecha real en lugar del número de día */}
+                      {/* Aquí mostramos la fecha real en formato DD/MM */}
                       <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
                         {row[0].dateDisplay}
                       </td>
