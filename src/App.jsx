@@ -194,10 +194,10 @@ export default function App() {
     let nextState;
     if (isNowLight) {
       hoursToNext = Number(hoursLight) - currentInCycle;
-      nextState = 'Oscuridad';
+      nextState = 'OFF';
     } else {
       hoursToNext = cycleLength - currentInCycle;
-      nextState = 'Luz';
+      nextState = 'ON';
     }
     if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
@@ -206,7 +206,7 @@ export default function App() {
       date: nextDate.toLocaleDateString([], { month: 'short', day: 'numeric' }),
       time: nextDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       nextState,
-      action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
+      action: nextState === 'ON' ? 'Encendido' : 'Apagado'
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
 
@@ -333,7 +333,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas oscuridad (h)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas OFF (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursDark}
                     onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
                     className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
