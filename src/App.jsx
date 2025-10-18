@@ -1,15 +1,24 @@
 /**
-Polished App.jsx — Fotoperiodo App (Mejoras Finales Combinadas: Fechas Numéricas y Visibilidad)
-- Se aplican las fechas en formato numérico (DD/MM) en el calendario.
-- Se mejora la visibilidad de etiquetas y textos secundarios cambiando tonos de gris a blanco/gris claro.
-- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-*/
+ * App.jsx — Fotoperiodo (Versión final extendida y corregida)
+ * - Mantiene toda la lógica original
+ * - Mejoras visuales (Inter, indigo + acentos rosados)
+ * - Superciclo en rojo, ON/OFF con emoji
+ * - Celda actual con contorno llamativo
+ * - Export PNG/JPEG del calendario con html2canvas (scale=3)
+ * - CSS separado en src/App.css
+ *
+ * Requisitos:
+ * npm i html2canvas lucide-react
+ */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
+import html2canvas from "html2canvas";
+import "./App.css";
 
 const STORAGE_KEY = "fotoperiodo_settings_v1";
 
+/* ---------- Helpers ---------- */
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
 function safeParseJSON(str, fallback) {
@@ -27,10 +36,11 @@ function fmtDateTimeLocal(d) {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
+/* ---------- Component ---------- */
 export default function App() {
   // ---- State ----
   const [startDate, setStartDate] = useState(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
+    const d = new Date(); d.setHours(0, 0, 0, 0);
     return fmtDateTimeLocal(d);
   });
 
@@ -40,6 +50,9 @@ export default function App() {
 
   const [now, setNow] = useState(new Date());
   const [errorMsg, setErrorMsg] = useState("");
+
+  // ref for calendar export
+  const calendarRef = useRef(null);
 
   // ---- Load saved settings on mount ----
   useEffect(() => {
@@ -63,9 +76,9 @@ export default function App() {
     return () => clearTimeout(id);
   }, [startDate, hoursLight, hoursDark, durationDays]);
 
-  // ---- Tick ----
+  // ---- Tick for 'now' ----
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000); // 30s
+    const id = setInterval(() => setNow(new Date()), 30000); // every 30s
     return () => clearInterval(id);
   }, []);
 
@@ -81,7 +94,7 @@ export default function App() {
     return true;
   }, [startDate, hoursLight, hoursDark, durationDays]);
 
-  // ---- Computed values ----
+  // ---- Derived / computed values (same logic original) ----
   const startDateObj = useMemo(() => {
     const d = new Date(startDate);
     if (isNaN(d.getTime())) return new Date();
@@ -90,11 +103,10 @@ export default function App() {
 
   const cycleLength = useMemo(() => {
     const sum = Number(hoursLight) + Number(hoursDark);
-    return sum > 0 ? sum : 0.0000001; // avoid zero division
+    return sum > 0 ? sum : 0.0000001; // avoid zero
   }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
-    // Usado para compensar el inicio del ciclo en el calendario
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
@@ -106,103 +118,69 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
-  // Lógica actual (basada en el archivo original): LUZ comienza en la hora de inicio.
-  const isNowLight = useMemo(() => {
-    return currentInCycle < Number(hoursLight);
-  }, [currentInCycle, hoursLight]);
+  const isNowLight = useMemo(() => currentInCycle < Number(hoursLight), [currentInCycle, hoursLight]);
 
-  // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
+  // Días "superciclo" (ciclos custom completos)
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
-  
-  // Para el calendario y el horario de hoy (basado en día de 24h)
+
+  // calendar helpers (24h-based)
   const currentHourIndex = useMemo(() => now.getHours(), [now]);
   const currentDayIndex24h = useMemo(() => {
     const startOfDayNow = new Date(now);
-    startOfDayNow.setHours(0, 0, 0, 0); 
-    
+    startOfDayNow.setHours(0, 0, 0, 0);
     const startOfDayStart = new Date(startDateObj);
     startOfDayStart.setHours(0, 0, 0, 0);
-    
     const daysSinceStart = (startOfDayNow.getTime() - startOfDayStart.getTime()) / (1000 * 60 * 60 * 24);
     return Math.floor(daysSinceStart);
   }, [now, startDateObj]);
 
-
-  // Ciclo: LUZ comienza en la hora 0 (del ciclo), dura hoursLight.
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
   }
-  
-  // ---- Balance Energético (vs 12L/12D) ----
-  const energyBalance = useMemo(() => {
-    if (hoursSinceStartNow < 0) return 0; 
 
+  // energy balance vs 12/12
+  const energyBalance = useMemo(() => {
+    if (hoursSinceStartNow < 0) return 0;
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
-
-    // Horas de luz consumidas por el ciclo personalizado hasta ahora
     const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
-
-    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
-
-    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
-  
-  // ---- FORMATO DE TIEMPO TRANSCURRIDO (DÍAS, HORAS, MINUTOS) ----
+
+  // formatted time elapsed
   const formattedTimeElapsed = useMemo(() => {
     if (hoursSinceStartNow < 0) return { days: 0, hours: 0, minutes: 0, display: "0 d" };
-
     let totalMinutes = Math.floor(hoursSinceStartNow * 60);
     const days = Math.floor(totalMinutes / (24 * 60));
     totalMinutes %= (24 * 60);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-
     let parts = [];
     if (days > 0) parts.push(`${days} d`);
     if (hours > 0 || (days === 0 && minutes > 0)) parts.push(`${hours} h`);
-    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`); 
-
-    return { 
-        days, 
-        hours, 
-        minutes, 
-        display: parts.length > 0 ? parts.join(' y ') : '0 d' 
-    };
+    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`);
+    return { days, hours, minutes, display: parts.length > 0 ? parts.join(' y ') : '0 d' };
   }, [hoursSinceStartNow]);
-  // ---- FIN FORMATO DE TIEMPO TRANSCURRIDO ----
-  
-  // ---- Build calendar data (array of days x 24) ----
+
+  // ---- Build calendar data (days x 24) ----
   const calendar = useMemo(() => {
     const rows = [];
-    const days = clamp(Number(durationDays) || 0, 1, 9999); 
-    
-    // Lógica para el formato DD/MM (del paso anterior)
+    const days = clamp(Number(durationDays) || 0, 1, 9999);
     const startOfDayStart = new Date(startDateObj);
-    startOfDayStart.setHours(0, 0, 0, 0); 
-    
+    startOfDayStart.setHours(0, 0, 0, 0);
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
     for (let d = 0; d < days; d++) {
       const row = [];
-      // Calcular la fecha para mostrar en la columna 'Día'
       const dateForDay = new Date(startOfDayStart.getTime() + d * MS_PER_DAY);
-      
-      const dateDisplay = dateForDay.toLocaleDateString([], { 
-          day: '2-digit', 
-          month: '2-digit' 
-      }).replace(/\//g, '/');
-      
+      const dateDisplay = dateForDay.toLocaleDateString([], { day: '2-digit', month: '2-digit' }).replace(/\//g, '/');
       for (let h = 0; h < 24; h++) {
-        // La compensación fractionalStartOffset es necesaria para que el L/D caiga en la hora correcta del día.
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push({
           isLight: Boolean(isLightAtAbsoluteHours(hoursSinceStart)),
-          dateDisplay: dateDisplay 
+          dateDisplay
         });
       }
       rows.push(row);
@@ -210,8 +188,7 @@ export default function App() {
     return rows;
   }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
 
-
-  // ---- next change event ----
+  // next event calc
   const nextChangeEvent = useMemo(() => {
     let hoursToNext;
     let nextState;
@@ -233,7 +210,7 @@ export default function App() {
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
 
-  // ---- export / import / reset ----
+  // export / import / reset
   const handleExport = useCallback(() => {
     const payload = { startDate, hoursLight, hoursDark, durationDays };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -266,7 +243,6 @@ export default function App() {
     setHoursLight(13); setHoursDark(14); setDurationDays(60);
   }, []);
 
-  // ---- small UI helpers ----
   const formatStartDate = useCallback((dObj) => {
     if (!dObj || isNaN(dObj.getTime())) return '--';
     return dObj.toLocaleString();
@@ -275,183 +251,220 @@ export default function App() {
   // run validation to show errors early
   useEffect(() => { validateInputs(); }, [validateInputs]);
 
-  // ---- JSX ----
-  const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-red-400' : 'text-gray-400';
+  // download calendar image using html2canvas (scale = 3 for higher res)
+  const downloadCalendarImage = useCallback(async (format = "png", scale = 3) => {
+    if (!calendarRef.current) return;
+    try {
+      const canvas = await html2canvas(calendarRef.current, {
+        backgroundColor: null,
+        useCORS: true,
+        scale
+      });
+      const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+      const dataUrl = canvas.toDataURL(mime, format === "jpeg" ? 0.92 : 1.0);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `fotoperiodo_calendar.${format}`;
+      a.click();
+    } catch (err) {
+      console.error("Error exportando calendario:", err);
+      alert("No se pudo exportar la imagen. Ver consola para más info.");
+    }
+  }, []);
+
+  // UI helpers
+  const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-rose-400' : 'text-gray-400';
   const balanceIcon = energyBalance > 0 ? '▲' : energyBalance < 0 ? '▼' : '—';
   const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Gasto Extra de' : 'Balance Neutral de';
 
+  /* ----------------- JSX ----------------- */
   return (
-    // CONTENEDOR PRINCIPAL CON EL DEGRADADO UNIFICADO
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-white">
-      {/* CONTENEDOR PRINCIPAL DE LA APP, NO TIENE BG PARA HEREDAR EL DEGRADADO */}
-      <div className="w-full max-w-5xl rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border border-slate-700 backdrop-blur-sm bg-slate-900/50">
-
-        <header className="text-center mb-6">
-          <div className="flex justify-center gap-4 mb-3">
-            <div className="p-2 rounded-xl bg-yellow-900/50 shadow-md"><Sun className="w-7 h-7 text-yellow-300" /></div>
-            <div className="p-2 rounded-xl bg-indigo-900/50 shadow-md"><Moon className="w-7 h-7 text-indigo-300" /></div>
+    <div className="app-root min-h-screen font-inter">
+      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))' }}>
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
+              <Sun className="w-8 h-8 text-yellow-300" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo</h1>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Configura cualquier fotoperiodo y visualizá el calendario</p>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Fotoperiodo — Control de Ciclos</h1>
-          <p className="text-sm text-gray-300 mt-1">Configura cualquier fotoperiodo y visualizá el calendario</p>
+
+          <div className="ml-auto flex items-center gap-3">
+            <div className="text-sm text-gray-400 hide-sm">Sincronizado con el sistema (claro/oscuro)</div>
+            <div className="flex gap-2">
+              <button onClick={handleExport} className="btn" style={{ background: 'var(--accent)', color: '#fff' }}>
+                <Download className="w-4 h-4" /> Exportar
+              </button>
+
+              <label className="btn" style={{ background: 'linear-gradient(90deg,var(--accent-pink),#f9a8d4)', color: '#111827', cursor: 'pointer' }}>
+                <Upload className="w-4 h-4" /> Importar
+                <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
+              </label>
+
+              <button onClick={resetDefaults} className="btn" style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid rgba(255,255,255,0.03)' }}>
+                <RefreshCw className="w-4 h-4" /> Reset
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="grid lg:grid-cols-3 gap-6">
+          {/* Configuration */}
+          <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl border shadow-lg" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--accent-700)' }}>Configuración</h2>
 
-          {/* Configuration - Se usa un fondo semi-transparente para la uniformidad */}
-          <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
-            <h2 className="text-lg font-semibold mb-4 text-white">Configuración</h2>
-
-            <div className="grid gap-4">
-              {/* MEJORA VISIBILIDAD: text-white */}
-              <label className="text-sm text-white">Fecha y hora de inicio</label>
-              <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Fecha y hora de inicio</label>
+                <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
+              </div>
 
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
-                  {/* MEJORA VISIBILIDAD: text-white */}
-                  <label className="text-sm text-white">Horas luz (h)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas luz (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursLight}
                     onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
+                    className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
                 </div>
+
                 <div>
-                  {/* MEJORA VISIBILIDAD: text-white */}
-                  <label className="text-sm text-white">Horas oscuridad (h)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas oscuridad (h)</label>
                   <input type="number" min="0" step="0.5" value={hoursDark}
                     onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
                 </div>
+
                 <div>
-                  {/* MEJORA VISIBILIDAD: text-white */}
-                  <label className="text-sm text-white">Duración (días)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Duración (días)</label>
                   <input type="number" min="1" max="9999" value={durationDays}
                     onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+                    className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Exportar</button>
+                <button onClick={() => downloadCalendarImage('png')} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Descargar PNG</button>
+
+                <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
 
                 <label className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
-                  <Upload className="w-4 h-4"/> Importar
+                  <Upload className="w-4 h-4"/> Importar config
                   <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
                 </label>
 
-                {/* MEJORA VISIBILIDAD: bg-gray-700 y hover:bg-gray-800 */}
-                <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition"> <RefreshCw className="w-4 h-4"/> Reset</button>
+                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition"> Exportar JSON </button>
 
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="ml-auto text-xs text-gray-300 self-center">Guardado local automático</div>
+                <button onClick={resetDefaults} className="ml-auto flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"> <RefreshCw className="w-4 h-4"/> Reset</button>
               </div>
 
               {errorMsg && <div className="text-sm text-red-400 mt-2 p-2 bg-red-900/20 rounded-lg">{errorMsg}</div>}
             </div>
           </section>
 
-          {/* Status - Se usa un fondo semi-transparente para la uniformidad */}
-          <aside className="p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
-            <h3 className="text-lg font-semibold mb-4 text-white">Estado</h3>
+          {/* Status */}
+          <aside className="p-4 sm:p-6 rounded-xl border shadow-lg" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--accent-700)' }}>Estado</h3>
 
-            {/* MEJORA VISIBILIDAD: text-gray-100 */}
-            <div className="space-y-4 text-sm text-gray-100">
-              <div className="border-b border-slate-700 pb-2">
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">Inicio:</div>
+            <div className="space-y-4 text-sm">
+              <div className="border-b border-white/5 pb-2">
+                <div className="text-xs text-gray-400">Inicio:</div>
                 <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
               </div>
 
-              {/* Días de Cultivo y VS 24h con estilos distintivos */}
-              <div className="border-b border-slate-700 pb-2 grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">DÍAS SUPER CICLO</div>
-                    <div className="font-extrabold text-3xl text-red-400 drop-shadow-lg">
-                        {Math.max(0, customCycleDayIndex)}
-                    </div>
-                    {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                    <div className="text-xs text-gray-300 mt-1">(Ciclos completos de {cycleLength.toFixed(1)}h)</div>
+              <div className="border-b border-white/5 pb-2 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-extrabold" style={{ color: 'var(--superciclo-red)' }}>DÍAS SUPER CICLO</div>
+                  <div className="font-extrabold text-3xl" style={{ color: 'var(--superciclo-red)' }}>
+                    {Math.max(0, customCycleDayIndex)}
                   </div>
-                  <div className="text-right">
-                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO</div>
-                      <div className="font-mono text-xl text-white mt-1">
-                          {formattedTimeElapsed.display}
-                      </div>
-                       {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                       <div className="text-xs text-gray-300 mt-1">(Equivalente en días 24h)</div>
+                  <div className="text-xs text-gray-400 mt-1">(Ciclos completos de {cycleLength.toFixed(1)}h)</div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO</div>
+                  <div className="font-mono text-xl text-white mt-1">
+                    {formattedTimeElapsed.display}
                   </div>
+                  <div className="text-xs text-gray-400 mt-1">(Equivalente en días 24h)</div>
+                </div>
               </div>
-              {/* FIN Días de Cultivo y Superciclo */}
 
-
-              {/* BALANCE ENERGÉTICO */}
-              <div className="border-b border-slate-700 pb-2">
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12L/12D):</div>
+              <div className="border-b border-white/5 pb-2">
+                <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12L/12D):</div>
                 <div className={`font-extrabold text-xl ${balanceColor}`}>
                   {balanceIcon} {Math.abs(energyBalance).toFixed(2)} hrs
                 </div>
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">{balanceText} luz acumulado desde el inicio.</div>
+                <div className="text-xs text-gray-400"> {balanceText} luz acumulado desde el inicio.</div>
               </div>
-              {/* FIN BALANCE ENERGÉTICO */}
 
-              <div className="border-b border-slate-700 pb-2">
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">Hora actual:</div>
+              <div className="border-b border-white/5 pb-2">
+                <div className="text-xs text-gray-400">Hora actual:</div>
                 <div className="font-mono text-lg text-white">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
 
-              <div className="border-b border-slate-700 pb-2">
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">Estado del ciclo:</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${isNowLight ? 'bg-yellow-500 text-slate-900 shadow-md' : 'bg-indigo-600 text-white shadow-md'}`}>{isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}</div>
+              <div className="border-b border-white/5 pb-2">
+                <div className="text-xs text-gray-400">Estado del ciclo</div>
+                <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold`} style={{ background: isNowLight ? 'linear-gradient(90deg,#facc15,#f472b6)' : 'var(--accent)', color: isNowLight ? '#111827' : '#fff' }}>
+                  {isNowLight ? 'ON 🔆' : 'OFF 🌙'}
+                </div>
               </div>
 
-              <div className="border-b border-slate-700 pb-2">
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">Próximo evento ({nextChangeEvent.action}):</div>
+              <div>
+                <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action})</div>
                 <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
-                {/* MEJORA VISIBILIDAD: text-gray-300 */}
-                <div className="text-xs text-gray-300">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
+                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
-
             </div>
           </aside>
 
           {/* Calendar full width below */}
-          <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
+          <section className="lg:col-span-3 mt-4 p-0 rounded-xl border shadow-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className="p-4 border-b flex items-center justify-between bg-slate-800/50">
               <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
-              {/* MEJORA VISIBILIDAD: text-gray-300 */}
-              <div className="text-sm text-gray-300">{durationDays} días</div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-gray-400">{durationDays} días</div>
+                <div className="flex gap-2">
+                  <button onClick={() => downloadCalendarImage('png')} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Descargar PNG</button>
+                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
+                </div>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs text-gray-200">
-                <thead className="bg-slate-800 sticky top-0 shadow-md">
+            <div className="overflow-x-auto p-4" ref={calendarRef} style={{ background: 'transparent' }}>
+              <table className="min-w-full text-xs" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
                   <tr>
-                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Día</th>
+                    <th className="p-2 text-left sticky left-0" style={{ width: 88, zIndex: 20, background: 'rgba(0,0,0,0.12)' }}>Día</th>
                     {Array.from({length:24}).map((_,h) => (
-                      {/* MEJORA VISIBILIDAD: text-gray-200 */}
                       <th key={h} className="p-2 text-center text-sm text-gray-200 w-8">{h}h</th>
                     ))}
                   </tr>
                 </thead>
+
                 <tbody>
-                  {/* FECHAS EN FORMATO NUMÉRICO DD/MM */}
                   {calendar.map((row, d) => (
-                    <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
+                    <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`} >
+                      <td className={`p-1 sticky left-0 font-semibold`} style={{ zIndex: 10, background: d === currentDayIndex24h ? 'rgba(99,102,241,0.12)' : 'transparent' }}>
                         {row[0].dateDisplay}
                       </td>
+
                       {row.map((cell, h) => {
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
-                            <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold 
-                                ${cell.isLight ? 'bg-yellow-700/80 text-yellow-100' : 'bg-indigo-700/80 text-indigo-100'} 
-                                ${isCurrent ? 'ring-2 ring-red-500 shadow-xl scale-105' : ''} transition-all duration-150`}>
+                            <div
+                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${isCurrent ? 'now-cell' : ''}`}
+                              style={{
+                                background: cell.isLight ? 'linear-gradient(90deg,#f59e0b,#f472b6)' : 'linear-gradient(90deg,#4338ca,#4338ca99)',
+                                color: '#fff',
+                                transition: 'all .12s ease'
+                              }}>
                               {cell.isLight ? 'L' : 'D'}
                             </div>
                           </td>
@@ -463,12 +476,9 @@ export default function App() {
               </table>
             </div>
 
-            {/* MEJORA VISIBILIDAD: text-gray-300 */}
-            <div className="p-3 text-xs text-gray-300 border-t border-slate-700">Leyenda: L = Luz, D = Oscuridad. Celda actual resaltada con borde rojo.</div>
+            <div className="p-3 text-xs text-gray-400 border-t">Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (PNG/JPG) para usarlo de wallpaper.</div>
           </section>
-
         </main>
-
       </div>
     </div>
   );

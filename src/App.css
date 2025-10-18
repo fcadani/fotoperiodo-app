@@ -1,180 +1,182 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
 
-:root {
-  --accent-indigo: #4f46e5;
-  --accent-pink: #f472b6;
+:root{
+  --bg-1: #0f1724;
+  --bg-2: #0b1220;
+  --card: rgba(17,24,39,0.6);
+  --muted: #9aa4b2;
+  --accent: #4f46e5; /* indigo-600 */
+  --accent-700: #3730a3;
+  --accent-pink: #f472b6; /* pink-400 */
+  --glass: rgba(255,255,255,0.04);
   --superciclo-red: #ef4444;
-  --highlight-now: rgba(244, 114, 182, 0.95);
-}
-
-body, .font-inter {
-  font-family: "Inter", system-ui, sans-serif;
-  color: #f3f4f6;
-  background: linear-gradient(180deg, #071029 0%, #081225 100%);
+  --highlight-now: rgba(244,114,182,0.95);
+  --text-dark-strong: #0f1724;
+  --text-light-strong: #f3f4f6;
 }
 
 @media (prefers-color-scheme: light) {
-  body, .font-inter {
-    color: #0f172a;
-    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  :root{
+    --bg-1: #f8fafc;
+    --bg-2: #eef2ff;
+    --card: rgba(255,255,255,0.8);
+    --muted: #556074;
+    --accent: #4338ca;
+    --accent-700: #3730a3;
+    --accent-pink: #f472b6;
+    --glass: rgba(0,0,0,0.03);
   }
 }
 
-.app-root {
-  min-height: 100vh;
-  padding: 1.5rem;
+/* font */
+.font-inter { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+
+/* Global text clarity: strong contrast for primary text */
+body, .font-inter, .app-root {
+  color: var(--text-light-strong);
 }
 
-.container {
-  max-width: 1000px;
-  margin: auto;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 1.5rem;
-  padding: 2rem;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+@media (prefers-color-scheme: light) {
+  body, .font-inter, .app-root {
+    color: var(--text-dark-strong);
+  }
 }
 
-/* Header */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+/* Ensure all text elements inherit the strong color */
+label, input, th, td, p, h1, h2, h3, h4, h5, h6, button, div {
+  color: inherit !important;
 }
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+
+/* Input styles (dark + light) */
+input[type="number"],
+input[type="datetime-local"],
+input[type="text"] {
+  background-color: rgba(255,255,255,0.04);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease;
 }
-.icon-sun {
-  color: #facc15;
-  width: 2rem;
-  height: 2rem;
+
+@media (prefers-color-scheme: light) {
+  input[type="number"],
+  input[type="datetime-local"],
+  input[type="text"] {
+    background-color: rgba(0,0,0,0.03);
+    color: var(--text-dark-strong);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
 }
-.download-buttons {
-  display: flex;
-  gap: 0.5rem;
+
+input::placeholder { color: rgba(255,255,255,0.5); }
+@media (prefers-color-scheme: light) { input::placeholder { color: rgba(0,0,0,0.45); } }
+
+input:focus {
+  outline: none;
+  box-shadow: 0 8px 30px rgba(79,70,229,0.12);
+  border-color: var(--accent);
+}
+
+/* datetime text visibility on webkit */
+input[type="datetime-local"]::-webkit-datetime-edit-text { color: inherit; }
+input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+input[type="datetime-local"]::-webkit-datetime-edit-hour-field,
+input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
+  color: inherit;
 }
 
 /* Buttons */
 .btn {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0.8rem;
-  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.6rem;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   cursor: pointer;
 }
-.btn-indigo {
-  background: var(--accent-indigo);
-  color: white;
-}
-.btn-pink {
-  background: var(--accent-pink);
-  color: black;
-}
-.btn:hover { opacity: 0.9; }
 
-/* Config & Status */
-.main-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-.config, .status {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 1rem;
-  padding: 1rem 1.5rem;
-}
-.config label {
-  display: block;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  color: inherit;
-}
-.config input {
-  width: 100%;
-  margin-top: 0.3rem;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.5rem;
-  color: inherit;
-}
-input:focus {
-  border-color: var(--accent-indigo);
-  box-shadow: 0 0 6px var(--accent-indigo);
-  outline: none;
-}
-input::placeholder { color: rgba(255,255,255,0.6); }
-
-.error {
-  color: #f87171;
-  margin-top: 0.5rem;
+/* Calendar cell text clarity + subtle glow */
+.calendar-cell-text {
+  text-shadow: 0 0 6px rgba(0,0,0,0.18);
+  -webkit-text-stroke: 0.01px rgba(0,0,0,0.05);
 }
 
-/* Status panel */
-.status h3 {
-  color: var(--accent-indigo);
-}
-.superciclo-label {
-  font-size: 0.8rem;
-  color: var(--superciclo-red);
-  margin-top: 1rem;
-}
-.superciclo-value {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--superciclo-red);
-}
-.estado {
-  margin-top: 1rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 1rem;
-  font-weight: 700;
-  display: inline-block;
-}
-.estado.on {
-  background: linear-gradient(90deg, #facc15, #f472b6);
-  color: #111;
-}
-.estado.off {
-  background: var(--accent-indigo);
-  color: white;
-}
-
-/* Calendar */
-.calendar table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  text-align: center;
-  font-size: 0.8rem;
-}
-.calendar th, .calendar td {
-  padding: 0.3rem;
-}
-.calendar th {
-  background: rgba(255, 255, 255, 0.05);
-}
-.cell {
-  height: 1.6rem;
-  border-radius: 0.25rem;
-  color: white;
-  text-shadow: 0 0 4px rgba(255,255,255,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.cell.light {
-  background: linear-gradient(90deg, #f59e0b, #f472b6);
-}
-.cell.dark {
-  background: linear-gradient(90deg, #4338ca, #3730a3);
-}
+/* Now cell highlight */
 .now-cell {
+  box-shadow: 0 8px 32px rgba(244,114,182,0.14);
+  transform: scale(1.03);
   border: 2px solid var(--highlight-now);
-  box-shadow: 0 0 12px var(--highlight-now);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+/* small responsive tweaks */
+@media (max-width: 640px) {
+  .hide-sm { display: none; }
+  .small-text { font-size: 0.82rem; }
+}
+
+/* === MOBILE OPTIMIZATIONS === */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.5rem;
+  }
+
+  .download-buttons {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config, .status {
+    padding: 1rem;
+  }
+
+  .config input {
+    font-size: 1rem;
+    padding: 0.6rem;
+  }
+
+  .calendar {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+  }
+
+  .calendar table {
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    font-size: 0.85rem;
+    width: auto;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .superciclo-value {
+    font-size: 2rem;
+  }
+
+  .estado {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.9rem;
+  }
 }
