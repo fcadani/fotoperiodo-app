@@ -14,74 +14,41 @@
   --text-secondary: #d1d5db; /* Texto suave */
 }
 
-/* @media (prefers-color-scheme: light) {
-  :root {
-    --bg-1: #f1f5f9;
-    --bg-2: #e2e8f0;
-    --card: #ffffff;
-    --muted: #475569;
-    --accent: #4338ca;
-    --accent-700: #3730a3;
-    --accent-pink: #db2777;
-    --superciclo-red: #dc2626;
-    --highlight-now: rgba(244, 114, 182, 0.7);
-    --text-primary: #0f172a;
-    --text-secondary: #1e293b;
-  }
-} */
-
 /* font */
-.font-inter { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+.font-inter {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
 
-/* Global text clarity: strong contrast for primary text */
+/* Fondo general */
 body, .app-root {
   background: var(--bg-1);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
 }
+
+/* Contenedor principal */
 .container {
   background: var(--card);
   color: var(--text-primary);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 0 40px rgba(0,0,0,0.3);
 }
-@media (prefers-color-scheme: light) {
-  body, .font-inter, .app-root {
-    color: var(--text-dark-strong);
-  }
-}
 
-/* Ensure all text elements inherit the strong color */
 input, button, th, td, label, p, h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary) !important;
 }
 
+/* Inputs */
 input {
   background-color: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: light) {
-  input {
-    background-color: #f8fafc;
-    border: 1px solid #cbd5e1;
-  }
+input::placeholder {
+  color: rgba(255,255,255,0.5);
 }
-
-
-@media (prefers-color-scheme: light) {
-  input[type="number"],
-  input[type="datetime-local"],
-  input[type="text"] {
-    background-color: rgba(0,0,0,0.03);
-    color: var(--text-dark-strong);
-    border: 1px solid rgba(0,0,0,0.08);
-  }
-}
-
-input::placeholder { color: rgba(255,255,255,0.5); }
-@media (prefers-color-scheme: light) { input::placeholder { color: rgba(0,0,0,0.45); } }
 
 input:focus {
   outline: none;
@@ -99,7 +66,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
   color: inherit;
 }
 
-/* Buttons */
+/* Botones */
 .btn {
   padding: 0.5rem 0.75rem;
   border-radius: 0.6rem;
@@ -110,13 +77,13 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
   cursor: pointer;
 }
 
-/* Calendar cell text clarity + subtle glow */
+/* Calendario */
 .calendar-cell-text {
   text-shadow: 0 0 6px rgba(0,0,0,0.18);
   -webkit-text-stroke: 0.01px rgba(0,0,0,0.05);
 }
 
-/* Now cell highlight */
+/* Celda actual destacada */
 .now-cell {
   box-shadow: 0 8px 32px rgba(244,114,182,0.14);
   transform: scale(1.03);
@@ -124,13 +91,12 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
 
-/* small responsive tweaks */
+/* Ajustes para móviles */
 @media (max-width: 640px) {
   .hide-sm { display: none; }
   .small-text { font-size: 0.82rem; }
 }
 
-/* === MOBILE OPTIMIZATIONS === */
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -191,13 +157,18 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
   }
 }
 
-/* === Fondo completo homogéneo oscuro === */
-html, body {
-  background-color: #0b1020 !important;
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow-x: hidden;
+/* Fondo y estructura completa (solución principal al problema del calendario) */
+html, body, #root, .app-root {
+  min-height: 100vh;
+  overflow-y: auto;
+  background-color: var(--bg-1);
+  display: block;
+  position: relative;
+  z-index: 0;
 }
 
+/* Calendario aislado para evitar que tape otros elementos */
+.calendar {
+  position: relative;
+  z-index: 1;
+}
