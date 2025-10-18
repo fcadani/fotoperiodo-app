@@ -194,3 +194,114 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
 html {
   color-scheme: dark !important;
 }
+/* === CALENDARIO FIJO Y RESPONSIVO === */
+.calendar-wrapper {
+  overflow: auto;
+  max-width: 100%;
+  max-height: 80vh;
+  position: relative;
+  border-radius: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99,102,241,0.4) transparent;
+}
+
+/* Mejor visibilidad en scroll horizontal */
+.calendar-wrapper::after {
+  content: "";
+  position: sticky;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1rem;
+  background: linear-gradient(to left, var(--bg-1), transparent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Tabla del calendario */
+.calendar table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+/* === Cabecera fija (fila de horas) === */
+.calendar thead th {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+/* === Columnas fijas === */
+
+/* Columna 1: Día */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 35;
+  background: rgba(17, 24, 39, 0.92);
+  backdrop-filter: blur(4px);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.3);
+}
+
+/* Columna 2: Fecha */
+.sticky-col-2 {
+  position: sticky;
+  left: 3.2rem; /* ajusta si cambia el ancho de la columna “Día” */
+  z-index: 30;
+  background: rgba(17, 24, 39, 0.92);
+  backdrop-filter: blur(4px);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.25);
+}
+
+/* === Mobile tweaks === */
+@media (max-width: 768px) {
+  .calendar td div {
+    height: 1.6rem;
+    font-size: 0.7rem;
+  }
+
+  .calendar-wrapper {
+    max-height: 70vh;
+    border-radius: 0.5rem;
+  }
+
+  .calendar thead th {
+    font-size: 0.7rem;
+    padding: 0.4rem;
+  }
+
+  .sticky-col,
+  .sticky-col-2 {
+    font-size: 0.7rem;
+    min-width: 3rem;
+  }
+}
+
+input {
+  transition: all 0.2s ease;
+  border-radius: 0.5rem;
+}
+input:focus {
+  transform: scale(1.01);
+}
+
+.btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 500px) {
+  .status, .config {
+    font-size: 0.85rem;
+  }
+  .calendar table {
+    font-size: 0.8rem;
+  }
+}

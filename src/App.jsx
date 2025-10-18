@@ -53,6 +53,15 @@ export default function App() {
 
   // ref for calendar export
   const calendarRef = useRef(null);
+  // Centrar automáticamente la celda actual en el calendario
+useEffect(() => {
+  if (!calendarRef.current) return;
+  const el = calendarRef.current.querySelector(".now-cell");
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  }
+}, [currentDayIndex24h, currentHourIndex]);
+
 
   // ---- Load saved settings on mount ----
   useEffect(() => {
@@ -312,14 +321,14 @@ export default function App() {
 
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas luz (h)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>ON (hs)</label>
                   <input type="number" min="0" step="0.5" value={hoursLight}
                     onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
                     className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
                 </div>
 
                 <div>
-                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>Horas OFF (h)</label>
+                  <label className="text-sm block mb-1" style={{ color: 'var(--muted)' }}>OFF (hs)</label>
                   <input type="number" min="0" step="0.5" value={hoursDark}
                     onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
                     className="w-full p-3 rounded-lg border border-transparent outline-none" style={{ background: 'rgba(255,255,255,0.02)' }} />
@@ -391,9 +400,22 @@ export default function App() {
 
               <div className="border-b border-white/5 pb-2">
                 <div className="text-xs text-gray-400">Estado del ciclo</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold`} style={{ background: isNowLight ? 'linear-gradient(90deg,#facc15,#f472b6)' : 'var(--accent)', color: isNowLight ? '#111827' : '#fff' }}>
-                  {isNowLight ? 'ON 🔆' : 'OFF 🌙'}
+                <div
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-bold transition-all duration-300 ease-out`}
+                  style={{
+                    background: isNowLight
+                      ? "linear-gradient(90deg,#facc15,#f472b6)"
+                      : "var(--accent)",
+                    color: isNowLight ? "#111827" : "#fff",
+                    transform: isNowLight ? "scale(1.05)" : "scale(1)",
+                    boxShadow: isNowLight
+                      ? "0 0 15px rgba(244,114,182,0.4)"
+                      : "0 0 10px rgba(99,102,241,0.3)",
+                  }}
+                >
+                  {isNowLight ? "ON 🔆" : "OFF 🌙"}
                 </div>
+
               </div>
 
               <div>
@@ -405,97 +427,116 @@ export default function App() {
           </aside>
 
           {/* Calendar full width below */}
-          <section className="lg:col-span-3 mt-4 p-0 rounded-xl border shadow-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <div className="p-4 border-b flex items-center justify-between bg-slate-800/50">
-              <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
+<section
+  className="lg:col-span-3 mt-4 p-0 rounded-xl border shadow-lg overflow-hidden"
+  style={{ background: "rgba(255,255,255,0.02)" }}
+>
+  <div className="p-4 border-b flex items-center justify-between bg-slate-800/50">
+    <h4 className="font-semibold text-white text-lg">
+      Calendario (Día × Hora)
+    </h4>
 
-              <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-400">{durationDays} días</div>
-                <div className="flex gap-2">
-                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"><Download className="w-4 h-4" /> Descargar JPG </button>
-                </div>
-              </div>
-            </div>
+    <div className="flex items-center gap-3">
+      <div className="text-sm text-gray-400">{durationDays} días</div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => downloadCalendarImage("jpeg")}
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"
+        >
+          <Download className="w-4 h-4" /> Descargar JPG
+        </button>
+      </div>
+    </div>
+  </div>
 
-            <div className="overflow-x-auto p-4" ref={calendarRef} style={{ background: 'transparent' }}>
-              <table className="min-w-full text-xs" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead>
-                    <tr>
-                      <th className="p-2 text-left bg-slate-800/80 sticky left-0">Día</th>
-                      <th className="p-2 text-left bg-slate-800/80 sticky left-12">Fecha</th>
-                      {Array.from({ length: 24 }).map((_, h) => (
-                        <th key={h} className="p-2 text-center text-sm text-gray-200 w-8">{h}h</th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                <tbody>
-                  {calendar.map((row, d) => (
-                    <tr
-                      key={d}
-                      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
-                    >
-                      {/* Nueva columna: Día */}
-                      <td
-                        className="p-1 sticky left-0 font-semibold"
-                        style={{
-                          zIndex: 15,
-                          background:
-                            d === currentDayIndex24h
-                              ? 'rgba(99,102,241,0.12)'
-                              : 'rgba(15,15,35,0.9)',
-                        }}
-                      >
-                        {d + 1}
-                      </td>
-
-                      {/* Columna existente: Fecha */}
-                      <td
-                        className="p-1 sticky left-12 font-semibold"
-                        style={{
-                          zIndex: 10,
-                          background:
-                            d === currentDayIndex24h
-                              ? 'rgba(99,102,241,0.12)'
-                              : 'rgba(15,15,35,0.9)',
-                        }}
-                      >
-                        {row[0].dateDisplay}
-                      </td>
-
-                      {/* Horas 0h, 1h, 2h, etc */}
-                      {row.map((cell, h) => {
-                        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
-                        return (
-                          <td key={h} className="p-0.5">
-                            <div
-                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
-                                isCurrent ? 'now-cell' : ''
-                              }`}
-                              style={{
-                                background: cell.isLight
-                                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
-                                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
-                                color: '#fff',
-                                transition: 'all .12s ease',
-                              }}
-                            >
-                              {cell.isLight ? 'L' : 'D'}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
+          {/* Contenedor con scroll controlado */}
+          <div className="calendar-wrapper calendar" ref={calendarRef}>
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr>
+                  <th className="p-2 text-left sticky-col">Día</th>
+                  <th className="p-2 text-left sticky-col-2">Fecha</th>
+                  {Array.from({ length: 24 }).map((_, h) => (
+                    <th key={h} className="p-2 text-center text-sm text-gray-200 w-8">
+                      {h}h
+                    </th>
                   ))}
-                </tbody>
+                </tr>
+              </thead>
 
-              </table>
-            </div>
+              <tbody>
+                {calendar.map((row, d) => (
+                  <tr
+                    key={d}
+                    className={`${
+                      d === currentDayIndex24h ? "bg-indigo-900/6" : ""
+                    } hover:bg-white/2 transition`}
+                  >
+                    {/* Columna fija: Día */}
+                    <td
+                      className="p-1 sticky-col font-semibold"
+                      style={{
+                        background:
+                          d === currentDayIndex24h
+                            ? "rgba(99,102,241,0.12)"
+                            : "rgba(15,15,35,0.9)",
+                      }}
+                    >
+                      {d + 1}
+                    </td>
 
-            <div className="p-3 text-xs text-gray-400 border-t">Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado brillante. Podés descargar el calendario como imagen (PNG/JPG) para usarlo de wallpaper.</div>
-          </section>
+                    {/* Columna fija: Fecha */}
+                    <td
+                      className="p-1 sticky-col-2 font-semibold"
+                      style={{
+                        background:
+                          d === currentDayIndex24h
+                            ? "rgba(99,102,241,0.12)"
+                            : "rgba(15,15,35,0.9)",
+                      }}
+                    >
+                      {row[0].dateDisplay}
+                    </td>
+
+                    {/* Horas */}
+                    {row.map((cell, h) => {
+                      const isCurrent =
+                        d === currentDayIndex24h && h === currentHourIndex;
+                      return (
+                        <td key={h} className="p-0.5">
+                          <div
+                            className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
+                              isCurrent ? "now-cell" : ""
+                            }`}
+                            style={{
+                              background: cell.isLight
+                                ? "linear-gradient(90deg,#f59e0b,#f472b6)"
+                                : "linear-gradient(90deg,#4338ca,#4338ca99)",
+                              color: "#fff",
+                              transition: "all .12s ease",
+                            }}
+                          >
+                            {cell.isLight ? "L" : "D"}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-3 text-xs text-gray-400 border-t">
+            Leyenda: L = Luz, D = Oscuridad. Celda actual marcada con contorno rosado
+            brillante. Podés descargar el calendario como imagen (PNG/JPG) para usarlo
+            de wallpaper.
+          </div>
+        </section>
+
         </main>
       </div>
     </div>
   );
 }
+
