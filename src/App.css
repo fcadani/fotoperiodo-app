@@ -1,42 +1,180 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+
+:root {
+  --accent-indigo: #4f46e5;
+  --accent-pink: #f472b6;
+  --superciclo-red: #ef4444;
+  --highlight-now: rgba(244, 114, 182, 0.95);
+}
+
+body, .font-inter {
+  font-family: "Inter", system-ui, sans-serif;
+  color: #f3f4f6;
+  background: linear-gradient(180deg, #071029 0%, #081225 100%);
+}
+
+@media (prefers-color-scheme: light) {
+  body, .font-inter {
+    color: #0f172a;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  }
+}
+
+.app-root {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 1.5rem;
   padding: 2rem;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.icon-sun {
+  color: #facc15;
+  width: 2rem;
+  height: 2rem;
+}
+.download-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-indigo {
+  background: var(--accent-indigo);
+  color: white;
+}
+.btn-pink {
+  background: var(--accent-pink);
+  color: black;
+}
+.btn:hover { opacity: 0.9; }
+
+/* Config & Status */
+.main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.config, .status {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+}
+.config label {
+  display: block;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  color: inherit;
+}
+.config input {
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  color: inherit;
+}
+input:focus {
+  border-color: var(--accent-indigo);
+  box-shadow: 0 0 6px var(--accent-indigo);
+  outline: none;
+}
+input::placeholder { color: rgba(255,255,255,0.6); }
+
+.error {
+  color: #f87171;
+  margin-top: 0.5rem;
+}
+
+/* Status panel */
+.status h3 {
+  color: var(--accent-indigo);
+}
+.superciclo-label {
+  font-size: 0.8rem;
+  color: var(--superciclo-red);
+  margin-top: 1rem;
+}
+.superciclo-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--superciclo-red);
+}
+.estado {
+  margin-top: 1rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  display: inline-block;
+}
+.estado.on {
+  background: linear-gradient(90deg, #facc15, #f472b6);
+  color: #111;
+}
+.estado.off {
+  background: var(--accent-indigo);
+  color: white;
+}
+
+/* Calendar */
+.calendar table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   text-align: center;
+  font-size: 0.8rem;
 }
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.calendar th, .calendar td {
+  padding: 0.3rem;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.calendar th {
+  background: rgba(255, 255, 255, 0.05);
 }
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.cell {
+  height: 1.6rem;
+  border-radius: 0.25rem;
+  color: white;
+  text-shadow: 0 0 4px rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.cell.light {
+  background: linear-gradient(90deg, #f59e0b, #f472b6);
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.cell.dark {
+  background: linear-gradient(90deg, #4338ca, #3730a3);
 }
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+.now-cell {
+  border: 2px solid var(--highlight-now);
+  box-shadow: 0 0 12px var(--highlight-now);
 }
