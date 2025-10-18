@@ -279,9 +279,8 @@ export default function App() {
 
   /* ----------------- JSX ----------------- */
   return (
-    <div className="app-root min-h-screen font-inter">
-      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))' }}>
-        {/* Header */}
+    <div className="app-root min-h-screen font-inter" style={{ backgroundColor: "#0b1020" }}>
+      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'transparent' }}>
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
@@ -334,7 +333,7 @@ export default function App() {
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={() => downloadCalendarImage('png')} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Descargar PNG</button>
+                
 
                 <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
 
@@ -416,41 +415,74 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <div className="text-sm text-gray-400">{durationDays} días</div>
                 <div className="flex gap-2">
-                  <button onClick={() => downloadCalendarImage('png')} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Descargar PNG</button>
-                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
+                  <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"><Download className="w-4 h-4" /> Descargar JPG </button>
                 </div>
               </div>
             </div>
 
             <div className="overflow-x-auto p-4" ref={calendarRef} style={{ background: 'transparent' }}>
               <table className="min-w-full text-xs" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <tr>
-                    <th className="p-2 text-left sticky left-0" style={{ width: 88, zIndex: 20, background: 'rgba(0,0,0,0.12)' }}>Día</th>
-                    {Array.from({length:24}).map((_,h) => (
-                      <th key={h} className="p-2 text-center text-sm text-gray-200 w-8">{h}h</th>
-                    ))}
-                  </tr>
-                </thead>
+                <thead>
+                    <tr>
+                      <th className="p-2 text-left bg-slate-800/80 sticky left-0">Día</th>
+                      <th className="p-2 text-left bg-slate-800/80 sticky left-12">Fecha</th>
+                      {Array.from({ length: 24 }).map((_, h) => (
+                        <th key={h} className="p-2 text-center text-sm text-gray-200 w-8">{h}h</th>
+                      ))}
+                    </tr>
+                  </thead>
 
                 <tbody>
                   {calendar.map((row, d) => (
-                    <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`} >
-                      <td className={`p-1 sticky left-0 font-semibold`} style={{ zIndex: 10, background: d === currentDayIndex24h ? 'rgba(99,102,241,0.12)' : 'transparent' }}>
+                    <tr
+                      key={d}
+                      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
+                    >
+                      {/* Nueva columna: Día */}
+                      <td
+                        className="p-1 sticky left-0 font-semibold"
+                        style={{
+                          zIndex: 15,
+                          background:
+                            d === currentDayIndex24h
+                              ? 'rgba(99,102,241,0.12)'
+                              : 'rgba(15,15,35,0.9)',
+                        }}
+                      >
+                        {d + 1}
+                      </td>
+
+                      {/* Columna existente: Fecha */}
+                      <td
+                        className="p-1 sticky left-12 font-semibold"
+                        style={{
+                          zIndex: 10,
+                          background:
+                            d === currentDayIndex24h
+                              ? 'rgba(99,102,241,0.12)'
+                              : 'rgba(15,15,35,0.9)',
+                        }}
+                      >
                         {row[0].dateDisplay}
                       </td>
 
+                      {/* Horas 0h, 1h, 2h, etc */}
                       {row.map((cell, h) => {
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
                             <div
-                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${isCurrent ? 'now-cell' : ''}`}
+                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
+                                isCurrent ? 'now-cell' : ''
+                              }`}
                               style={{
-                                background: cell.isLight ? 'linear-gradient(90deg,#f59e0b,#f472b6)' : 'linear-gradient(90deg,#4338ca,#4338ca99)',
+                                background: cell.isLight
+                                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
+                                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
                                 color: '#fff',
-                                transition: 'all .12s ease'
-                              }}>
+                                transition: 'all .12s ease',
+                              }}
+                            >
                               {cell.isLight ? 'L' : 'D'}
                             </div>
                           </td>
@@ -459,6 +491,7 @@ export default function App() {
                     </tr>
                   ))}
                 </tbody>
+
               </table>
             </div>
 
