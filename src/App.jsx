@@ -287,8 +287,9 @@ export default function App() {
               <Sun className="w-8 h-8 text-yellow-300" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo</h1>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>Configura cualquier fotoperiodo y visualizá el calendario</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>SUPERCICLO</h1>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Configura tu SuperCiclo y visualiza tu calendario</p>
+
             </div>
           </div>
 
@@ -332,11 +333,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mt-2">
-                
-
-                <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg shadow-md hover:brightness-95 transition"> JPG </button>
-
+              <div className="flex flex-wrap gap-2 mt-2">                
                 <label className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
                   <Upload className="w-4 h-4"/> Importar config
                   <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
