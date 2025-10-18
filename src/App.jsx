@@ -449,64 +449,64 @@ export default function App() {
                   </thead>
 
                 <tbody>
-                  {calendar.map((row, d) => (
-                    <tr
-                      key={d}
-                      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
-                    >
-                      {/* Nueva columna: Día */}
-                      <td
-                        className="p-1 sticky left-0 font-semibold"
-                        style={{
-                          zIndex: 15,
-                          background:
-                            d === currentDayIndex24h
-                              ? 'rgba(99,102,241,0.12)'
-                              : 'rgba(15,15,35,0.9)',
-                        }}
-                      >
-                        {d + 1}
-                      </td>
+  {calendar.map((row, d) => (
+    <tr
+      key={d}
+      className={`${d === currentDayIndex24h ? 'bg-indigo-900/6' : ''} hover:bg-white/2 transition`}
+    >
+      {/* Nueva columna: Día */}
+      <td
+        className="p-1 sticky left-0 font-semibold"
+        style={{
+          zIndex: 15,
+          background:
+            d === currentDayIndex24h
+              ? 'rgba(99,102,241,0.12)'
+              : 'rgba(15,15,35,0.9)',
+        }}
+      >
+        {d + 1}
+      </td>
 
-                      {/* Columna existente: Fecha */}
-                      <td
-                        className="p-1 sticky left-12 font-semibold"
-                        style={{
-                          zIndex: 10,
-                          background:
-                            d === currentDayIndex24h
-                              ? 'rgba(99,102,241,0.12)'
-                              : 'rgba(15,15,35,0.9)',
-                        }}
-                      >
-                        {row[0].dateDisplay}
-                      </td>
+      {/* Columna existente: Fecha */}
+      <td
+        className="p-1 sticky left-12 font-semibold"
+        style={{
+          zIndex: 10,
+          background:
+            d === currentDayIndex24h
+              ? 'rgba(99,102,241,0.12)'
+              : 'rgba(15,15,35,0.9)',
+        }}
+      >
+        {row[0].dateDisplay}
+      </td>
 
-                      {/* Horas 0h, 1h, 2h, etc */}
-                      {row.map((cell, h) => {
-                        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
-                        return (
-                          <td key={h} className="p-0.5">
-                            <div
-                              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
-                                isCurrent ? 'now-cell' : ''
-                              }`}
-                              style={{
-                                background: cell.isLight
-                                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
-                                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
-                                color: '#fff',
-                                transition: 'all .12s ease',
-                              }}
-                            >
-                              {cell.isLight ? 'L' : 'D'}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
+      {/* Horas 0h–23h */}
+      {row.map((cell, h) => {
+        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
+        return (
+          <td key={h} className="p-0.5">
+            <div
+              className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold calendar-cell-text ${
+                isCurrent ? 'now-cell' : ''
+              }`}
+              style={{
+                background: cell.isLight
+                  ? 'linear-gradient(90deg,#f59e0b,#f472b6)'
+                  : 'linear-gradient(90deg,#4338ca,#4338ca99)',
+                color: '#fff',
+                transition: 'all .12s ease',
+              }}
+            >
+              {cell.isLight ? 'L' : 'D'}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  ))}
+</tbody>
 
               </table>
             </div>
