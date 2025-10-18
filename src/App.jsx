@@ -1,8 +1,9 @@
 /**
-Polished App.jsx — Fotoperiodo App (Optimización Final)
-- Lógica de 'lightScheduleToday' y la variable han sido eliminadas por completo.
+Polished App.jsx — Fotoperiodo App (Bloque "Horario HOY" eliminado)
+- Se eliminó el bloque de JSX y la lógica de 'lightScheduleToday' de los useMemo.
 - Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- Lógica de ciclo: LUZ (L) comienza exactamente en la hora de inicio configurada.
+- La lógica de ciclo se mantiene: la Fecha y hora de inicio SIEMPRE marca el COMIENZO de la fase de LUZ (L) por defecto.
+- El calendario muestra los números de día (Día 1, Día 2, etc.) según el archivo proporcionado.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -94,6 +95,7 @@ export default function App() {
   }, [hoursLight, hoursDark]);
 
   const fractionalStartOffset = useMemo(() => {
+    // Usado para compensar el inicio del ciclo en el calendario
     return startDateObj.getHours() + startDateObj.getMinutes() / 60 + startDateObj.getSeconds() / 3600;
   }, [startDateObj]);
 
@@ -105,7 +107,7 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
-  // LUZ comienza en la hora de inicio (hora 0 del ciclo).
+  // Lógica actual (basada en el archivo original): LUZ comienza en la hora de inicio.
   const isNowLight = useMemo(() => {
     return currentInCycle < Number(hoursLight);
   }, [currentInCycle, hoursLight]);
@@ -113,7 +115,7 @@ export default function App() {
   // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
   
-  // Para el calendario y el resaltado (basado en día de 24h)
+  // Para el calendario y el horario de hoy (basado en día de 24h)
   const currentHourIndex = useMemo(() => now.getHours(), [now]);
   const currentDayIndex24h = useMemo(() => {
     const startOfDayNow = new Date(now);
@@ -127,6 +129,7 @@ export default function App() {
   }, [now, startDateObj]);
 
 
+  // Ciclo: LUZ comienza en la hora 0 (del ciclo), dura hoursLight.
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
@@ -139,9 +142,13 @@ export default function App() {
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
 
+    // Horas de luz consumidas por el ciclo personalizado hasta ahora
     const lightHoursConsumedCustom = (hoursLightCustom / cycleLenCustom) * hoursSinceStartNow;
+
+    // Horas de luz consumidas por un ciclo estándar 12L/12D (12/24 = 0.5)
     const lightHoursConsumedStandard = 0.5 * hoursSinceStartNow;
 
+    // Balance: Estándar - Personalizado. Positivo = Ahorro, Negativo = Gasto Extra.
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
@@ -177,6 +184,7 @@ export default function App() {
     for (let d = 0; d < days; d++) {
       const row = [];
       for (let h = 0; h < 24; h++) {
+        // La compensación fractionalStartOffset es necesaria para que el L/D caiga en la hora correcta del día.
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
       }
@@ -187,22 +195,18 @@ export default function App() {
 
 
   // ---- next change event ----
+  // La lógica para el próximo evento se mantiene ya que no dependía del bloque "Horario HOY".
   const nextChangeEvent = useMemo(() => {
     let hoursToNext;
     let nextState;
     if (isNowLight) {
-      // Si estamos en LUZ, el próximo cambio es a OSCURIDAD.
-      // Ocurre al final de la fase de luz: hoursLight - currentInCycle
       hoursToNext = Number(hoursLight) - currentInCycle;
       nextState = 'Oscuridad';
     } else {
-      // Si estamos en OSCURIDAD, el próximo cambio es a LUZ.
-      // Ocurre al final de la fase de oscuridad: cycleLength - currentInCycle
       hoursToNext = cycleLength - currentInCycle;
       nextState = 'Luz';
     }
     if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
-    
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
     return {
       hoursToNext: hoursToNext,
@@ -380,6 +384,10 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
+              {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
+              {/* ESTE BLOQUE FUE ELIMINADO COMPLETAMENTE. */}
+              {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
+
             </div>
           </aside>
 
@@ -387,7 +395,7 @@ export default function App() {
           <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
               <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
-              <div className="text-sm text-gray-400">{durationDays} días}</div>
+              <div className="text-sm text-gray-400">{durationDays} días</div>
             </div>
 
             <div className="overflow-x-auto">
