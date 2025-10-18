@@ -282,20 +282,34 @@ export default function App() {
     <div className="app-root min-h-screen font-inter">
       <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'var(--card)' }}>
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
-              <Sun className="w-8 h-8 text-yellow-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo SUPERCICLO</h1>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>Configura tu superciclo, visualizá el calendario y descargalo paa</p>
-            </div>
-          </div>
+  <div className="flex items-center gap-4">
+    <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
+      <Sun className="w-8 h-8 text-yellow-300" />
+    </div>
+    <div>
+      <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>SUPERCICLO</h1>
+      <p className="text-sm" style={{ color: 'var(--muted)' }}>
+        Configura tu SUPERCICLO, visualizá el calendario y descargalo
+      </p>
+    </div>
+  </div>
 
-          <div className="ml-auto flex items-center gap-3">
-            <div className="text-sm text-gray-400 hide-sm"></div>
-          </div>
-        </header>
+  {/* Menú superior con botones */}
+  <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
+    <button onClick={() => downloadCalendarImage('jpeg')} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition">
+      <Download className="w-4 h-4" /> Exportar
+    </button>
+
+    <label className="flex items-center gap-2 px-3 py-2 text-sm bg-pink-400 text-black rounded-lg cursor-pointer shadow-md hover:brightness-95 transition">
+      <Upload className="w-4 h-4" /> Importar
+      <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
+    </label>
+
+    <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+      <RefreshCw className="w-4 h-4" /> Reset
+    </button>
+  </div>
+</header>
 
         <main className="grid lg:grid-cols-3 gap-6">
           {/* Configuration */}
