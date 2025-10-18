@@ -294,21 +294,7 @@ export default function App() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <div className="text-sm text-gray-400 hide-sm">Sincronizado con el sistema (claro/oscuro)</div>
-            <div className="flex gap-2">
-              <button onClick={handleExport} className="btn" style={{ background: 'var(--accent)', color: '#fff' }}>
-                <Download className="w-4 h-4" /> Exportar
-              </button>
-
-              <label className="btn" style={{ background: 'linear-gradient(90deg,var(--accent-pink),#f9a8d4)', color: '#111827', cursor: 'pointer' }}>
-                <Upload className="w-4 h-4" /> Importar
-                <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
-              </label>
-
-              <button onClick={resetDefaults} className="btn" style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid rgba(255,255,255,0.03)' }}>
-                <RefreshCw className="w-4 h-4" /> Reset
-              </button>
-            </div>
+            <div className="text-sm text-gray-400 hide-sm"></div>
           </div>
         </header>
 
