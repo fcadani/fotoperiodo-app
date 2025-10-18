@@ -1,7 +1,8 @@
 /**
-Polished App.jsx — Fotoperiodo App (Optimización Final v2)
-- Ajustes de fuentes y espaciado para mejor prolijidad en el bloque Estado.
-- El indicador de 'DÍAS SUPER CICLO' ha sido renombrado a 'CICLOS COMPLETOS' y se ha añadido la duración exacta del tiempo sobrante en el ciclo actual.
+Polished App.jsx — Fotoperiodo App (Optimización Final)
+- Lógica de 'lightScheduleToday' y la variable han sido eliminadas por completo.
+- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
+- Lógica de ciclo: LUZ (L) comienza exactamente en la hora de inicio configurada.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -104,6 +105,7 @@ export default function App() {
     return ((hoursSinceStartNow % cycleLength) + cycleLength) % cycleLength;
   }, [hoursSinceStartNow, cycleLength]);
 
+  // LUZ comienza en la hora de inicio (hora 0 del ciclo).
   const isNowLight = useMemo(() => {
     return currentInCycle < Number(hoursLight);
   }, [currentInCycle, hoursLight]);
@@ -124,26 +126,7 @@ export default function App() {
     return Math.floor(daysSinceStart);
   }, [now, startDateObj]);
 
-  // ---- Lógica del tiempo transcurrido en el ciclo actual ----
-  const timeInCurrentCycle = useMemo(() => {
-    if (hoursSinceStartNow < 0) return { hours: 0, minutes: 0, display: "0 h 0 m" };
 
-    let totalMinutes = Math.floor(currentInCycle * 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    let parts = [];
-    if (hours > 0) parts.push(`${hours} h`);
-    if (minutes > 0 || hours === 0) parts.push(`${minutes} m`); 
-
-    return { 
-        hours, 
-        minutes, 
-        display: parts.join(' y ')
-    };
-  }, [currentInCycle, hoursSinceStartNow]);
-  
-  // ---- Lógica de Luz/Oscuridad para el Calendario ----
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
@@ -200,7 +183,7 @@ export default function App() {
       rows.push(row);
     }
     return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength]);
+  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
 
 
   // ---- next change event ----
@@ -208,13 +191,18 @@ export default function App() {
     let hoursToNext;
     let nextState;
     if (isNowLight) {
+      // Si estamos en LUZ, el próximo cambio es a OSCURIDAD.
+      // Ocurre al final de la fase de luz: hoursLight - currentInCycle
       hoursToNext = Number(hoursLight) - currentInCycle;
       nextState = 'Oscuridad';
     } else {
+      // Si estamos en OSCURIDAD, el próximo cambio es a LUZ.
+      // Ocurre al final de la fase de oscuridad: cycleLength - currentInCycle
       hoursToNext = cycleLength - currentInCycle;
       nextState = 'Luz';
     }
     if (!Number.isFinite(hoursToNext) || hoursToNext < 0) hoursToNext = 0;
+    
     const nextDate = new Date(now.getTime() + Math.round(hoursToNext * 3600000));
     return {
       hoursToNext: hoursToNext,
@@ -224,52 +212,6 @@ export default function App() {
       action: nextState === 'Luz' ? 'Encendido' : 'Apagado'
     };
   }, [now, isNowLight, currentInCycle, hoursLight, hoursDark, cycleLength]);
-
-  // ---- Determine today's precise schedule (encendido/apagado) ----
-  const lightScheduleToday = useMemo(() => {
-    const lightHours = Number(hoursLight);
-    const darkHours = Number(hoursDark);
-    const cycleLen = cycleLength;
-
-    if (lightHours === 0) return { status: 'Oscuridad total', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: false };
-    if (darkHours === 0) return { status: 'Luz continua', lightStart: 'N/A', lightEnd: 'N/A', isLightActive: true };
-
-    const currentCycleStartAbsoluteHours = hoursSinceStartNow - currentInCycle; 
-
-    let lightStartAbsolute;
-    
-    if (isNowLight) {
-      lightStartAbsolute = currentCycleStartAbsoluteHours;
-    } else {
-      lightStartAbsolute = currentCycleStartAbsoluteHours - cycleLen;
-    }
-
-    let lightEndAbsolute = lightStartAbsolute + lightHours;
-
-    while (lightEndAbsolute < hoursSinceStartNow) {
-        lightStartAbsolute += cycleLen;
-        lightEndAbsolute += cycleLen;
-    }
-
-    const formatDateTime = (hAbsolute) => {
-      const d = new Date(startDateObj.getTime() + hAbsolute * 3600000);
-
-      return d.toLocaleDateString([], { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    };
-    
-    return {
-      status: null,
-      lightStart: formatDateTime(lightStartAbsolute),
-      lightEnd: formatDateTime(lightEndAbsolute), 
-      isLightActive: isNowLight
-    };
-  }, [hoursLight, hoursDark, cycleLength, hoursSinceStartNow, currentInCycle, isNowLight, startDateObj]);
-
 
   // ---- export / import / reset ----
   const handleExport = useCallback(() => {
@@ -392,31 +334,24 @@ export default function App() {
                 <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
               </div>
 
-              {/* Días de Cultivo, Súper Ciclo y Tiempo Transcurrido con fuentes ajustadas */}
+              {/* Días de Cultivo y VS 24h con estilos distintivos */}
               <div className="border-b border-slate-700 pb-2 grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">CICLOS COMPLETOS</div>
-                    <div className="font-extrabold text-2xl text-red-400 drop-shadow-lg">
+                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">DÍAS SUPER CICLO</div>
+                    <div className="font-extrabold text-3xl text-red-400 drop-shadow-lg">
                         {Math.max(0, customCycleDayIndex)}
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">(Duración: {cycleLength.toFixed(1)}h)</div>
+                    <div className="text-xs text-gray-400 mt-1">(Ciclos completos de {cycleLength.toFixed(1)}h)</div>
                   </div>
                   <div className="text-right">
-                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO TOTAL</div>
-                      <div className="font-mono text-lg text-white mt-1">
+                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO</div>
+                      <div className="font-mono text-xl text-white mt-1">
                           {formattedTimeElapsed.display}
                       </div>
                        <div className="text-xs text-gray-400 mt-1">(Equivalente en días 24h)</div>
                   </div>
               </div>
-              
-              {/* TIEMPO EN EL CICLO ACTUAL (NUEVO) */}
-              <div className="border-b border-slate-700 pb-2">
-                  <div className="text-xs text-gray-400 font-extrabold">TIEMPO EN CICLO ACTUAL ({cycleLength.toFixed(1)}h):</div>
-                  <div className="font-mono text-base text-white">{timeInCurrentCycle.display}</div>
-                  <div className="text-xs text-gray-400">Desde el inicio de la fase actual ({isNowLight ? 'Luz' : 'Oscuridad'}).</div>
-              </div>
-              {/* FIN TIEMPO EN EL CICLO ACTUAL */}
+              {/* FIN Días de Cultivo y Superciclo */}
 
 
               {/* BALANCE ENERGÉTICO */}
@@ -445,26 +380,6 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
-              {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
-              <div>
-                <div className="text-xs text-gray-400 mb-2">Horario **HOY** (Día {currentDayIndex24h + 1} de 24h):</div>
-                <div className="text-sm grid grid-cols-1 gap-3 text-white">
-                  <div className="border border-yellow-800/50 p-3 rounded-xl bg-slate-800/80 shadow-inner">
-                    <span className="text-yellow-400 font-semibold block mb-1 text-base">
-                      {lightScheduleToday.isLightActive ? 'ON (Inicio Luz Actual):' : 'ON (Próx. Encendido):'}
-                    </span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightStart}</div>
-                    
-                    <span className="text-red-400 font-semibold block mt-3 mb-1 text-base">
-                      {lightScheduleToday.isLightActive ? 'OFF (Próx. Apagado):' : 'OFF (Fin Luz Anterior):'}
-                    </span> 
-                    <div className="font-mono text-lg">{lightScheduleToday.lightEnd}</div>
-                  </div>
-                </div>
-                {lightScheduleToday.status && <p className="text-xs text-gray-400 mt-1">*{lightScheduleToday.status}</p>}
-              </div>
-              {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
-
             </div>
           </aside>
 
@@ -472,7 +387,7 @@ export default function App() {
           <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
               <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
-              <div className="text-sm text-gray-400">{durationDays} días</div>
+              <div className="text-sm text-gray-400">{durationDays} días}</div>
             </div>
 
             <div className="overflow-x-auto">
