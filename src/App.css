@@ -193,11 +193,11 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
 
 /* === Fondo completo homogéneo oscuro === */
 html, body {
-  background-color: #0b1020 !important; /* mismo color del fondo principal */
+  background-color: #0b1020 !important;
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow-x: hidden; /* evita scroll lateral blanco */
+  overflow-x: hidden;
 }
 

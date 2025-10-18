@@ -279,8 +279,8 @@ export default function App() {
 
   /* ----------------- JSX ----------------- */
   return (
-    <div className="app-root min-h-screen font-inter" style={{ backgroundColor: "#0b1020" }}>
-      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'transparent' }}>
+    <div className="app-root min-h-screen font-inter">
+      <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8 border border-gray-700" style={{ background: 'var(--card)' }}>
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="p-2 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
