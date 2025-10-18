@@ -132,21 +132,45 @@ useEffect(() => {
   // Días "superciclo" (ciclos custom completos)
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
 
-  // calendar helpers (24h-based)
-  const currentHourIndex = useMemo(() => now.getHours(), [now]);
-  const currentDayIndex24h = useMemo(() => {
-    const startOfDayNow = new Date(now);
-    startOfDayNow.setHours(0, 0, 0, 0);
-    const startOfDayStart = new Date(startDateObj);
-    startOfDayStart.setHours(0, 0, 0, 0);
-    const daysSinceStart = (startOfDayNow.getTime() - startOfDayStart.getTime()) / (1000 * 60 * 60 * 24);
-    return Math.floor(daysSinceStart);
-  }, [now, startDateObj]);
+ // calendar helpers (24h-based)
+const currentHourIndex = useMemo(() => now.getHours(), [now]);
+const currentDayIndex24h = useMemo(() => {
+  const startOfDayNow = new Date(now);
+  startOfDayNow.setHours(0, 0, 0, 0);
+  const startOfDayStart = new Date(startDateObj);
+  startOfDayStart.setHours(0, 0, 0, 0);
+  const daysSinceStart =
+    (startOfDayNow.getTime() - startOfDayStart.getTime()) /
+    (1000 * 60 * 60 * 24);
+  return Math.floor(daysSinceStart);
+}, [now, startDateObj]);
 
-  function isLightAtAbsoluteHours(hoursSinceStart) {
-    const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
-    return inCycle < Number(hoursLight);
+function isLightAtAbsoluteHours(hoursSinceStart) {
+  const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
+  return inCycle < Number(hoursLight);
+}
+
+// === Centrar automáticamente la celda actual del calendario al abrir ===
+useEffect(() => {
+  if (!calendarRef.current) return;
+
+  const el = calendarRef.current.querySelector(".now-cell");
+  if (el) {
+    // Evita mover el scroll si el usuario ya desplazó manualmente
+    const alreadyScrolled =
+      calendarRef.current.scrollTop > 50 || calendarRef.current.scrollLeft > 50;
+
+    if (!alreadyScrolled) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
+    }
   }
+}, []); // ← Solo se ejecuta una vez al montar
+
+
 
   // energy balance vs 12/12
   const energyBalance = useMemo(() => {
