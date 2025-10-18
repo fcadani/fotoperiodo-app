@@ -1,8 +1,10 @@
 /**
-Polished App.jsx — Fotoperiodo App (Fechas en Calendario con Formato Numérico)
-- MEJORA FINAL: Las fechas del calendario se cambian a formato numérico limpio (DD/MM) para mayor prolijidad.
-- Se mantienen todas las optimizaciones anteriores (Super Ciclo, Balance, Próximo Evento, eliminación de bloque "Horario HOY").
-*/
+ * App.jsx — Fotoperiodo (versión estética mejorada)
+ * - Fuente Inter (Google Fonts)
+ * - Modo claro/oscuro automático (prefers-color-scheme)
+ * - Paleta índigo + acentos rosados
+ * - Mantiene toda la lógica original (sin cambios en cálculos)
+ */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Sun, Moon, Download, Upload, RefreshCw, Zap } from "lucide-react";
@@ -76,7 +78,7 @@ export default function App() {
     if (isNaN(d.getTime())) { setErrorMsg("Formato de fecha inválido."); return false; }
     if (!Number.isFinite(Number(hoursLight)) || Number(hoursLight) < 0) { setErrorMsg("Horas de luz inválidas."); return false; }
     if (!Number.isFinite(Number(hoursDark)) || Number(hoursDark) < 0) { setErrorMsg("Horas de oscuridad inválidas."); return false; }
-    if (!Number.isFinite(Number(durationDays)) || Number(durationDays) < 1) { setErrorMsg("Duración debe ser >= 1 día."); return false; }
+    if (!Number.isFinite(Number(durationDays)) || durationDays < 1) { setErrorMsg("Duración debe ser >= 1 día."); return false; }
     return true;
   }, [startDate, hoursLight, hoursDark, durationDays]);
 
@@ -110,30 +112,29 @@ export default function App() {
 
   // Días Cultivo (Personalizado): Cantidad de ciclos personalizados COMPLETOS
   const customCycleDayIndex = useMemo(() => Math.floor(hoursSinceStartNow / cycleLength), [hoursSinceStartNow, cycleLength]);
-  
+
   // Para el calendario y el horario de hoy (basado en día de 24h)
   const currentHourIndex = useMemo(() => now.getHours(), [now]);
   const currentDayIndex24h = useMemo(() => {
     const startOfDayNow = new Date(now);
-    startOfDayNow.setHours(0, 0, 0, 0); 
-    
+    startOfDayNow.setHours(0, 0, 0, 0);
+
     const startOfDayStart = new Date(startDateObj);
     startOfDayStart.setHours(0, 0, 0, 0);
-    
+
     const daysSinceStart = (startOfDayNow.getTime() - startOfDayStart.getTime()) / (1000 * 60 * 60 * 24);
     return Math.floor(daysSinceStart);
   }, [now, startDateObj]);
-
 
   // Ciclo: LUZ comienza en la hora 0 (del ciclo), dura hoursLight.
   function isLightAtAbsoluteHours(hoursSinceStart) {
     const inCycle = ((hoursSinceStart % cycleLength) + cycleLength) % cycleLength;
     return inCycle < Number(hoursLight);
   }
-  
+
   // ---- Balance Energético (vs 12L/12D) ----
   const energyBalance = useMemo(() => {
-    if (hoursSinceStartNow < 0) return 0; 
+    if (hoursSinceStartNow < 0) return 0;
 
     const hoursLightCustom = Number(hoursLight);
     const cycleLenCustom = cycleLength;
@@ -144,7 +145,7 @@ export default function App() {
     const totalBalance = lightHoursConsumedStandard - lightHoursConsumedCustom;
     return totalBalance;
   }, [hoursLight, hoursSinceStartNow, cycleLength]);
-  
+
   // ---- FORMATO DE TIEMPO TRANSCURRIDO (DÍAS, HORAS, MINUTOS) ----
   const formattedTimeElapsed = useMemo(() => {
     if (hoursSinceStartNow < 0) return { days: 0, hours: 0, minutes: 0, display: "0 d" };
@@ -158,50 +159,48 @@ export default function App() {
     let parts = [];
     if (days > 0) parts.push(`${days} d`);
     if (hours > 0 || (days === 0 && minutes > 0)) parts.push(`${hours} h`);
-    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`); 
+    if (minutes > 0 && days === 0 && hours === 0) parts.push(`${minutes} m`);
 
-    return { 
-        days, 
-        hours, 
-        minutes, 
-        display: parts.length > 0 ? parts.join(' y ') : '0 d' 
+    return {
+      days,
+      hours,
+      minutes,
+      display: parts.length > 0 ? parts.join(' y ') : '0 d'
     };
   }, [hoursSinceStartNow]);
-  // ---- FIN FORMATO DE TIEMPO TRANSCURRIDO ----
-  
+
   // ---- Build calendar data (array of days x 24) ----
   const calendar = useMemo(() => {
     const rows = [];
-    const days = clamp(Number(durationDays) || 0, 1, 9999); 
-    
+    const days = clamp(Number(durationDays) || 0, 1, 9999);
+
     const startOfDayStart = new Date(startDateObj);
     startOfDayStart.setHours(0, 0, 0, 0); // Establece la hora a 00:00:00 del día de inicio
-    
+
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
     for (let d = 0; d < days; d++) {
       const row = [];
       // Calcular la fecha para mostrar en la columna 'Día'
       const dateForDay = new Date(startOfDayStart.getTime() + d * MS_PER_DAY);
-      
-      // *** CAMBIO CLAVE: Formato numérico DD/MM ***
-      const dateDisplay = dateForDay.toLocaleDateString([], { 
-          day: '2-digit', 
-          month: '2-digit' 
-      }).replace(/\//g, '/'); // Asegura el separador en caso de diferentes localizaciones
-      
+
+      // Formato numérico DD/MM
+      const dateDisplay = dateForDay.toLocaleDateString([], {
+        day: '2-digit',
+        month: '2-digit'
+      }).replace(/\//g, '/');
+
       for (let h = 0; h < 24; h++) {
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
         row.push({
           isLight: Boolean(isLightAtAbsoluteHours(hoursSinceStart)),
-          dateDisplay: dateDisplay 
+          dateDisplay: dateDisplay
         });
       }
       rows.push(row);
     }
     return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]); // Dependencia de startDateObj
-
+  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, cycleLength, startDateObj]);
 
   // ---- next change event ----
   const nextChangeEvent = useMemo(() => {
@@ -268,180 +267,230 @@ export default function App() {
   useEffect(() => { validateInputs(); }, [validateInputs]);
 
   // ---- JSX ----
-  const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-red-400' : 'text-gray-400';
+  const balanceColor = energyBalance > 0 ? 'text-emerald-400' : energyBalance < 0 ? 'text-rose-400' : 'text-gray-400';
   const balanceIcon = energyBalance > 0 ? '▲' : energyBalance < 0 ? '▼' : '—';
   const balanceText = energyBalance > 0 ? 'Ahorro de' : energyBalance < 0 ? 'Gasto Extra de' : 'Balance Neutral de';
 
   return (
-    // CONTENEDOR PRINCIPAL CON EL DEGRADADO UNIFICADO
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-white">
-      {/* CONTENEDOR PRINCIPAL DE LA APP, NO TIENE BG PARA HEREDAR EL DEGRADADO */}
-      <div className="w-full max-w-5xl rounded-3xl shadow-2xl p-4 sm:p-8 transition-all border border-slate-700 backdrop-blur-sm bg-slate-900/50">
+    <>
+      {/* Google Font + basic CSS variables + prefers-color-scheme */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
 
-        <header className="text-center mb-6">
-          <div className="flex justify-center gap-4 mb-3">
-            <div className="p-2 rounded-xl bg-yellow-900/50 shadow-md"><Sun className="w-7 h-7 text-yellow-300" /></div>
-            <div className="p-2 rounded-xl bg-indigo-900/50 shadow-md"><Moon className="w-7 h-7 text-indigo-300" /></div>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Fotoperiodo — Control de Ciclos</h1>
-          <p className="text-sm text-gray-300 mt-1">Configura cualquier fotoperiodo y visualizá el calendario</p>
-        </header>
+        :root{
+          --bg-1: #0f1724; /* dark fallback */
+          --bg-2: #0b1220;
+          --card: rgba(17,24,39,0.6);
+          --muted: #9aa4b2;
+          --accent: #4f46e5; /* indigo-600 */
+          --accent-700: #3730a3;
+          --accent-pink: #f472b6; /* pink-400 */
+          --glass: rgba(255,255,255,0.04);
+        }
 
-        <main className="grid lg:grid-cols-3 gap-6">
+        @media (prefers-color-scheme: light) {
+          :root{
+            --bg-1: #f8fafc;
+            --bg-2: #eef2ff;
+            --card: rgba(255,255,255,0.7);
+            --muted: #556074;
+            --accent: #4338ca; /* indigo */
+            --accent-700: #3730a3;
+            --accent-pink: #f472b6;
+            --glass: rgba(0,0,0,0.03);
+          }
+        }
 
-          {/* Configuration - Se usa un fondo semi-transparente para la uniformidad */}
-          <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
-            <h2 className="text-lg font-semibold mb-4 text-white">Configuración</h2>
+        .font-inter { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
 
-            <div className="grid gap-4">
-              <label className="text-sm text-gray-100">Fecha y hora de inicio</label>
-              <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+        /* small utility to subtly animate the current cell */
+        .pulse-current {
+          transition: transform .18s ease, box-shadow .18s ease;
+          transform-origin: center;
+        }
+      `}</style>
 
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-sm text-gray-100">Horas luz (h)</label>
-                  <input type="number" min="0" step="0.5" value={hoursLight}
-                    onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-yellow-500 transition" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-100">Horas oscuridad (h)</label>
-                  <input type="number" min="0" step="0.5" value={hoursDark}
-                    onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-100">Duración (días)</label>
-                  <input type="number" min="1" max="9999" value={durationDays}
-                    onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
-                    className="w-full p-3 rounded-lg border border-slate-600 bg-slate-800 text-base text-white outline-none focus:ring-2 focus:ring-indigo-500 transition" />
-                </div>
+      <div className="min-h-screen font-inter px-4 py-6" style={{ background: `linear-gradient(180deg, ${getComputedStyle(document.documentElement).getPropertyValue('--bg-2') || '#0b1220'} 0%, ${getComputedStyle(document.documentElement).getPropertyValue('--bg-1') || '#0f1724'} 100%)` }}>
+        <div className="max-w-6xl mx-auto rounded-3xl shadow-2xl p-4 sm:p-8" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))', border: '1px solid rgba(255,255,255,0.04)' }}>
+
+          {/* Header */}
+          <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.12), rgba(244,114,182,0.06))' }}>
+                <Sun className="w-8 h-8 text-yellow-300" />
               </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: 'var(--accent)' }}>Fotoperiodo</h1>
+                <p className="text-sm text-gray-400 mt-1">Control de ciclos · Vista calendario · Responsive</p>
+              </div>
+            </div>
 
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition"> <Download className="w-4 h-4"/> Exportar</button>
-
-                <label className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg cursor-pointer shadow-md hover:bg-emerald-700 transition">
-                  <Upload className="w-4 h-4"/> Importar
+            <div className="ml-auto flex items-center gap-3">
+              <div className="text-sm text-gray-400 hidden sm:block">Sincronizado con el sistema (claro/oscuro)</div>
+              <div className="flex gap-2">
+                <button onClick={handleExport} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm" style={{ background: 'var(--accent)', color: '#fff' }}>
+                  <Download className="w-4 h-4" /> Exportar
+                </button>
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm cursor-pointer" style={{ background: 'var(--accent-pink)', color: '#fff' }}>
+                  <Upload className="w-4 h-4" /> Importar
                   <input type="file" accept="application/json" onChange={(e) => handleImport(e.target.files?.[0])} className="hidden" />
                 </label>
-
-                <button onClick={resetDefaults} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"> <RefreshCw className="w-4 h-4"/> Reset</button>
-
-                <div className="ml-auto text-xs text-gray-400 self-center">Guardado local automático</div>
+                <button onClick={resetDefaults} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)' }}>
+                  <RefreshCw className="w-4 h-4" /> Reset
+                </button>
               </div>
-
-              {errorMsg && <div className="text-sm text-red-400 mt-2 p-2 bg-red-900/20 rounded-lg">{errorMsg}</div>}
             </div>
-          </section>
+          </header>
 
-          {/* Status - Se usa un fondo semi-transparente para la uniformidad */}
-          <aside className="p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg bg-slate-900/50">
-            <h3 className="text-lg font-semibold mb-4 text-white">Estado</h3>
+          <main className="grid lg:grid-cols-3 gap-6">
+            {/* Configuración */}
+            <section className="lg:col-span-2 p-4 sm:p-6 rounded-xl" style={{ background: 'var(--card)', border: '1px solid rgba(255,255,255,0.03)' }}>
+              <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--accent-700)' }}>Configuración</h2>
 
-            <div className="space-y-4 text-sm text-gray-200">
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Inicio:</div>
-                <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
-              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1">Fecha y hora de inicio</label>
+                  <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full p-3 rounded-lg border border-transparent outline-none"
+                    style={{ background: 'rgba(255,255,255,0.02)', color: 'inherit' }} />
+                </div>
 
-              {/* Días de Cultivo y VS 24h con estilos distintivos */}
-              <div className="border-b border-slate-700 pb-2 grid grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-3 gap-3">
                   <div>
-                    <div className="text-xs font-extrabold text-red-400 drop-shadow-lg">DÍAS SUPER CICLO</div>
-                    <div className="font-extrabold text-3xl text-red-400 drop-shadow-lg">
-                        {Math.max(0, customCycleDayIndex)}
+                    <label className="text-sm text-gray-300 block mb-1">Horas luz (h)</label>
+                    <input type="number" min="0" step="0.5" value={hoursLight}
+                      onChange={(e) => setHoursLight(clamp(Number(e.target.value), 0, 9999))}
+                      className="w-full p-3 rounded-lg border border-transparent outline-none"
+                      style={{ background: 'rgba(255,255,255,0.02)' }} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-300 block mb-1">Horas oscuridad (h)</label>
+                    <input type="number" min="0" step="0.5" value={hoursDark}
+                      onChange={(e) => setHoursDark(clamp(Number(e.target.value), 0, 9999))}
+                      className="w-full p-3 rounded-lg border border-transparent outline-none"
+                      style={{ background: 'rgba(255,255,255,0.02)' }} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-300 block mb-1">Duración (días)</label>
+                    <input type="number" min="1" max="9999" value={durationDays}
+                      onChange={(e) => setDurationDays(clamp(Number(e.target.value), 1, 9999))}
+                      className="w-full p-3 rounded-lg border border-transparent outline-none"
+                      style={{ background: 'rgba(255,255,255,0.02)' }} />
+                  </div>
+                </div>
+
+                {errorMsg && <div className="p-3 rounded-md text-sm" style={{ background: 'rgba(244,67,54,0.08)', color: '#f87171' }}>{errorMsg}</div>}
+
+                <div className="text-xs text-gray-400">Guardado local automático.</div>
+              </div>
+            </section>
+
+            {/* Estado */}
+            <aside className="p-4 sm:p-6 rounded-xl" style={{ background: 'var(--card)', border: '1px solid rgba(255,255,255,0.03)' }}>
+              <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--accent-700)' }}>Estado</h3>
+
+              <div className="space-y-4 text-sm">
+                <div className="border-b border-white/5 pb-2">
+                  <div className="text-xs text-gray-400">Inicio</div>
+                  <div className="font-mono text-sm">{formatStartDate(startDateObj)}</div>
+                </div>
+
+                <div className="border-b border-white/5 pb-2 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs font-bold text-rose-400">DÍAS SUPER CICLO</div>
+                    <div className="font-extrabold text-3xl" style={{ color: 'var(--accent)' }}>
+                      {Math.max(0, customCycleDayIndex)}
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">(Ciclos completos de {cycleLength.toFixed(1)}h)</div>
+                    <div className="text-xs text-gray-400 mt-1">(Ciclos de {cycleLength.toFixed(1)}h)</div>
                   </div>
                   <div className="text-right">
-                      <div className="text-xs font-extrabold text-white">TIEMPO TRANSCURRIDO</div>
-                      <div className="font-mono text-xl text-white mt-1">
-                          {formattedTimeElapsed.display}
-                      </div>
-                       <div className="text-xs text-gray-400 mt-1">(Equivalente en días 24h)</div>
+                    <div className="text-xs font-bold text-gray-300">TIEMPO TRANSCURRIDO</div>
+                    <div className="font-mono text-xl mt-1">{formattedTimeElapsed.display}</div>
+                    <div className="text-xs text-gray-400 mt-1">(equivalente en días 24h)</div>
                   </div>
-              </div>
-              {/* FIN Días de Cultivo y Superciclo */}
-
-
-              {/* BALANCE ENERGÉTICO */}
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500"/> Balance Energético (vs 12L/12D):</div>
-                <div className={`font-extrabold text-xl ${balanceColor}`}>
-                  {balanceIcon} {Math.abs(energyBalance).toFixed(2)} hrs
                 </div>
-                <div className="text-xs text-gray-400">{balanceText} luz acumulado desde el inicio.</div>
+
+                <div className="border-b border-white/5 pb-2">
+                  <div className="text-xs text-gray-400 flex items-center gap-2">
+                    <Zap className="w-4 h-4" /> Balance Energético (vs 12L/12D)
+                  </div>
+                  <div className={`font-extrabold text-xl`} style={{ color: energyBalance > 0 ? '#10b981' : energyBalance < 0 ? 'var(--accent-pink)' : '#94a3b8' }}>
+                    {balanceIcon} {Math.abs(energyBalance).toFixed(2)} hrs
+                  </div>
+                  <div className="text-xs text-gray-400">{balanceText} luz acumulado desde el inicio.</div>
+                </div>
+
+                <div className="border-b border-white/5 pb-2">
+                  <div className="text-xs text-gray-400">Hora actual</div>
+                  <div className="font-mono text-lg">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+
+                <div className="border-b border-white/5 pb-2">
+                  <div className="text-xs text-gray-400">Estado del ciclo</div>
+                  <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold`} style={{ background: isNowLight ? 'linear-gradient(90deg,#facc15,#f472b6)' : 'var(--accent)', color: isNowLight ? '#111827' : '#fff' }}>
+                    {isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action})</div>
+                  <div className="font-semibold">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
+                  <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
+                </div>
               </div>
-              {/* FIN BALANCE ENERGÉTICO */}
+            </aside>
 
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Hora actual:</div>
-                <div className="font-mono text-lg text-white">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            {/* Calendario (full width row) */}
+            <section className="lg:col-span-3 mt-4 rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(255,255,255,0.03)' }}>
+              <div className="flex items-center justify-between p-4 border-b border-white/5">
+                <h4 className="font-semibold">Calendario (Día × Hora)</h4>
+                <div className="text-sm text-gray-400">{durationDays} días</div>
               </div>
 
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Estado del ciclo:</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${isNowLight ? 'bg-yellow-500 text-slate-900 shadow-md' : 'bg-indigo-600 text-white shadow-md'}`}>{isNowLight ? 'LUZ ACTIVA' : 'OSCURIDAD'}</div>
-              </div>
-
-              <div className="border-b border-slate-700 pb-2">
-                <div className="text-xs text-gray-400">Próximo evento ({nextChangeEvent.action}):</div>
-                <div className="font-semibold text-white text-base">{nextChangeEvent.nextState} — {nextChangeEvent.time} ({nextChangeEvent.date})</div>
-                <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Calendar full width below */}
-          <section className="lg:col-span-3 mt-4 p-0 rounded-xl border border-slate-700 shadow-lg overflow-hidden bg-slate-900/50">
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/50">
-              <h4 className="font-semibold text-white text-lg">Calendario (Día × Hora)</h4>
-              <div className="text-sm text-gray-400">{durationDays} días</div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs text-gray-200">
-                <thead className="bg-slate-800 sticky top-0 shadow-md">
-                  <tr>
-                    <th className="p-2 text-left sticky left-0 bg-slate-800 text-sm text-white z-10 w-12">Día</th>
-                    {Array.from({length:24}).map((_,h) => (
-                      <th key={h} className="p-2 text-center text-sm text-gray-300 w-8">{h}h</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {calendar.map((row, d) => (
-                    <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      {/* Aquí mostramos la fecha real en formato DD/MM */}
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
-                        {row[0].dateDisplay}
-                      </td>
-                      {row.map((cell, h) => {
-                        const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
-                        return (
-                          <td key={h} className="p-0.5">
-                            <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold 
-                                ${cell.isLight ? 'bg-yellow-700/80 text-yellow-100' : 'bg-indigo-700/80 text-indigo-100'} 
-                                ${isCurrent ? 'ring-2 ring-red-500 shadow-xl scale-105' : ''} transition-all duration-150`}>
-                              {cell.isLight ? 'L' : 'D'}
-                            </div>
-                          </td>
-                        );
-                      })}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                  <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <tr>
+                      <th className="p-2 text-left sticky left-0" style={{ width: 80, zIndex: 20, background: 'rgba(0,0,0,0.14)' }}>Día</th>
+                      {Array.from({length:24}).map((_,h) => (
+                        <th key={h} className="p-2 text-center" style={{ minWidth: 36 }}>{h}h</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {calendar.map((row, d) => (
+                      <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/10' : ''} hover:bg-white/2 transition`} >
+                        <td className={`p-1 sticky left-0 font-semibold`} style={{ zIndex: 10, background: d === currentDayIndex24h ? 'rgba(99,102,241,0.12)' : 'var(--card)' }}>
+                          {row[0].dateDisplay}
+                        </td>
 
-            <div className="p-3 text-xs text-gray-400 border-t border-slate-700">Leyenda: L = Luz, D = Oscuridad. Celda actual resaltada con borde rojo.</div>
-          </section>
+                        {row.map((cell, h) => {
+                          const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
+                          return (
+                            <td key={h} className="p-0.5">
+                              <div className={`w-full h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold pulse-current ${isCurrent ? 'scale-105' : ''}`}
+                                style={{
+                                  background: cell.isLight ? 'linear-gradient(90deg,#f59e0b,#f472b6)' : 'linear-gradient(90deg,#4338ca,#4338ca99)',
+                                  color: cell.isLight ? '#fff' : '#f8fafc',
+                                  boxShadow: isCurrent ? '0 6px 20px rgba(244,114,182,0.14)' : 'none'
+                                }}>
+                                {cell.isLight ? 'L' : 'D'}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-        </main>
+              <div className="p-3 text-xs text-gray-400 border-t border-white/5">Leyenda: L = Luz, D = Oscuridad. Celda actual resaltada.</div>
+            </section>
+          </main>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }
