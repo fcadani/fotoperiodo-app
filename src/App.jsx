@@ -1,9 +1,7 @@
 /**
-Polished App.jsx — Fotoperiodo App (Bloque "Horario HOY" eliminado)
-- Se eliminó el bloque de JSX y la lógica de 'lightScheduleToday' de los useMemo.
-- Mantiene funcionalidad: fotoperiodo ilimitado, duración configurable, calendario día×hora, indicador actual, próximo cambio.
-- La lógica de ciclo se mantiene: la Fecha y hora de inicio SIEMPRE marca el COMIENZO de la fase de LUZ (L) por defecto.
-- El calendario muestra los números de día (Día 1, Día 2, etc.) según el archivo proporcionado.
+Polished App.jsx — Fotoperiodo App (Días del Calendario con Fecha Real)
+- **MEJORA CLAVE:** El calendario ahora muestra la fecha real (ej: "17 oct") en lugar de solo el número de día (Día 1).
+- Se mantiene el número de día de 24h para el resaltado de la fila actual.
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -181,21 +179,34 @@ export default function App() {
   const calendar = useMemo(() => {
     const rows = [];
     const days = clamp(Number(durationDays) || 0, 1, 9999); 
+    
+    const startOfDayStart = new Date(startDateObj);
+    startOfDayStart.setHours(0, 0, 0, 0); // Establece la hora a 00:00:00 del día de inicio
+    
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
     for (let d = 0; d < days; d++) {
       const row = [];
+      // Calcular la fecha para mostrar en la columna 'Día'
+      const dateForDay = new Date(startOfDayStart.getTime() + d * MS_PER_DAY);
+      const dateDisplay = dateForDay.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      
       for (let h = 0; h < 24; h++) {
         // La compensación fractionalStartOffset es necesaria para que el L/D caiga en la hora correcta del día.
         const hoursSinceStart = d * 24 + h - fractionalStartOffset;
-        row.push(Boolean(isLightAtAbsoluteHours(hoursSinceStart)));
+        row.push({
+          isLight: Boolean(isLightAtAbsoluteHours(hoursSinceStart)),
+          dateDisplay: dateDisplay // Se agrega la fecha a cada celda de la fila
+        });
       }
       rows.push(row);
     }
     return rows;
-  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark]);
+  }, [durationDays, fractionalStartOffset, hoursLight, hoursDark, startDateObj]); // Dependencia de startDateObj
+  // ---- FIN BUILD CALENDAR DATA ----
 
 
   // ---- next change event ----
-  // La lógica para el próximo evento se mantiene ya que no dependía del bloque "Horario HOY".
   const nextChangeEvent = useMemo(() => {
     let hoursToNext;
     let nextState;
@@ -384,10 +395,6 @@ export default function App() {
                 <div className="text-xs text-gray-400">En {nextChangeEvent.hoursToNext?.toFixed(2) ?? '--'} hrs</div>
               </div>
 
-              {/* ** BLOQUE DE HORARIO DETALLADO (ON/OFF con fecha y hora) ** */}
-              {/* ESTE BLOQUE FUE ELIMINADO COMPLETAMENTE. */}
-              {/* ** FIN BLOQUE DE HORARIO DETALLADO ** */}
-
             </div>
           </aside>
 
@@ -410,16 +417,20 @@ export default function App() {
                 </thead>
                 <tbody>
                   {calendar.map((row, d) => (
+                    // La comprobación de currentDayIndex24h se mantiene para el resaltado de la fila
                     <tr key={d} className={`${d === currentDayIndex24h ? 'bg-indigo-900/30' : 'hover:bg-slate-700/50'} transition`}>
-                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>{d+1}</td>
-                      {row.map((isLight, h) => {
+                      {/* Aquí mostramos la fecha real en lugar del número de día */}
+                      <td className={`p-1 sticky left-0 bg-slate-800 text-sm font-semibold z-10 ${d === currentDayIndex24h ? 'bg-indigo-900/30 text-white' : 'text-gray-100'}`}>
+                        {row[0].dateDisplay}
+                      </td>
+                      {row.map((cell, h) => {
                         const isCurrent = d === currentDayIndex24h && h === currentHourIndex;
                         return (
                           <td key={h} className="p-0.5">
                             <div className={`w-full h-6 rounded-sm flex items-center justify-center text-xs font-mono font-semibold 
-                                ${isLight ? 'bg-yellow-700/80 text-yellow-100' : 'bg-indigo-700/80 text-indigo-100'} 
+                                ${cell.isLight ? 'bg-yellow-700/80 text-yellow-100' : 'bg-indigo-700/80 text-indigo-100'} 
                                 ${isCurrent ? 'ring-2 ring-red-500 shadow-xl scale-105' : ''} transition-all duration-150`}>
-                              {isLight ? 'L' : 'D'}
+                              {cell.isLight ? 'L' : 'D'}
                             </div>
                           </td>
                         );
